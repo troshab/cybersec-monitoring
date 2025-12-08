@@ -35,13 +35,13 @@
     Ролі сервера для налаштування (ADDS, DHCP, DNS, FileServer, NPS)
 
 .EXAMPLE
-    .\Deploy-Server.ps1 -LokiUrl "http://192.168.1.100:3100"
+    .\Deploy-Server.ps1 -LokiUrl "http://10.0.1.2:3100"
 
 .EXAMPLE
-    .\Deploy-Server.ps1 -LokiUrl "http://loki:3100" -ServerRoles "ADDS","DNS","DHCP"
+    .\Deploy-Server.ps1 -LokiUrl "http://10.0.1.2:3100" -ServerRoles "ADDS","DNS","DHCP"
 
 .EXAMPLE
-    .\Deploy-Server.ps1 -LokiUrl "http://loki:3100" -FleetUrl "https://fleet:8080" -FleetEnrollSecret "secret"
+    .\Deploy-Server.ps1 -LokiUrl "http://10.0.1.2:3100" -FleetUrl "https://10.0.1.2:8080" -FleetEnrollSecret "secret"
 
 .NOTES
     Запускати від адміністратора

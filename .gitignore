@@ -4,11 +4,12 @@
 task.md
 course.txt
 
-# Environment files with secrets
-.env
+# Environment files with secrets (except .env which is demo for lab)
+# .env - KEPT for demo purposes
 .env.local
 .env.*.local
-*.env
+.env.production
+.env.secret
 
 # Secrets and credentials
 **/secrets/
