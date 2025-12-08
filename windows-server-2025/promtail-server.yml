@@ -1,0 +1,416 @@
+# Promtail Configuration for Windows Server 2025
+# Оптимізовано для серверних ролей (DC, DNS, DHCP, File Server, NPS)
+# Generated for cybersec-monitoring project
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: C:\ProgramData\Promtail\positions.yaml
+
+clients:
+  - url: ${LOKI_URL}/loki/api/v1/push
+    batchwait: 1s
+    batchsize: 1048576
+    timeout: 10s
+
+scrape_configs:
+  # =========================================================================
+  # Security Events - Authentication (High Priority)
+  # =========================================================================
+  - job_name: server_auth
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\auth-bookmark.xml
+      eventlog_name: Security
+      xpath_query: |
+        Event[System[(
+          EventID=4624 or EventID=4625 or EventID=4634 or EventID=4647 or
+          EventID=4648 or EventID=4672 or EventID=4776 or EventID=4740 or
+          EventID=4768 or EventID=4769 or EventID=4771
+        )]]
+    relabel_configs:
+      - source_labels: ['computer']
+        target_label: 'host'
+    pipeline_stages:
+      - json:
+          expressions:
+            event_id: eventID
+            user: targetUserName
+            logon_type: logonType
+            source_ip: ipAddress
+      - labels:
+          event_id:
+          logon_type:
+    labels:
+      job: windows_auth
+      host: ${HOSTNAME}
+      os_type: server
+      category: authentication
+      severity: high
+
+  # =========================================================================
+  # Security Events - Account Management (Critical for DC)
+  # =========================================================================
+  - job_name: server_accounts
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\accounts-bookmark.xml
+      eventlog_name: Security
+      xpath_query: |
+        Event[System[(
+          EventID=4720 or EventID=4722 or EventID=4723 or EventID=4724 or
+          EventID=4725 or EventID=4726 or EventID=4727 or EventID=4728 or
+          EventID=4729 or EventID=4730 or EventID=4731 or EventID=4732 or
+          EventID=4733 or EventID=4734 or EventID=4735 or EventID=4738 or
+          EventID=4741 or EventID=4742 or EventID=4743 or
+          EventID=4754 or EventID=4755 or EventID=4756 or EventID=4757 or
+          EventID=4758 or EventID=4764 or EventID=4765 or EventID=4766
+        )]]
+    labels:
+      job: windows_accounts
+      host: ${HOSTNAME}
+      os_type: server
+      category: account_management
+      severity: critical
+
+  # =========================================================================
+  # Security Events - Process & Service Creation
+  # =========================================================================
+  - job_name: server_process
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\process-bookmark.xml
+      eventlog_name: Security
+      xpath_query: |
+        Event[System[(EventID=4688 or EventID=4689)]]
+    pipeline_stages:
+      - json:
+          expressions:
+            process_name: newProcessName
+            command_line: commandLine
+      - labels:
+          process_name:
+    labels:
+      job: windows_process
+      host: ${HOSTNAME}
+      os_type: server
+      category: process_creation
+      severity: medium
+
+  # =========================================================================
+  # Security Events - Scheduled Tasks & Services (Persistence)
+  # =========================================================================
+  - job_name: server_persistence
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\persistence-bookmark.xml
+      eventlog_name: Security
+      xpath_query: |
+        Event[System[(
+          EventID=4697 or EventID=4698 or EventID=4699 or
+          EventID=4700 or EventID=4701 or EventID=4702
+        )]]
+    labels:
+      job: windows_persistence
+      host: ${HOSTNAME}
+      os_type: server
+      category: persistence
+      severity: critical
+
+  # =========================================================================
+  # Security Events - Object Access (File Server)
+  # =========================================================================
+  - job_name: server_file_access
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\file-bookmark.xml
+      eventlog_name: Security
+      xpath_query: |
+        Event[System[(
+          EventID=4656 or EventID=4660 or EventID=4663 or EventID=4670 or
+          EventID=5140 or EventID=5142 or EventID=5143 or EventID=5144 or EventID=5145
+        )]]
+    labels:
+      job: windows_file_access
+      host: ${HOSTNAME}
+      os_type: server
+      category: file_access
+      severity: medium
+
+  # =========================================================================
+  # Security Events - Directory Service (AD)
+  # =========================================================================
+  - job_name: server_directory_service
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\ds-bookmark.xml
+      eventlog_name: Security
+      xpath_query: |
+        Event[System[(
+          EventID=4662 or EventID=5136 or EventID=5137 or
+          EventID=5138 or EventID=5139 or EventID=5141 or
+          EventID=4928 or EventID=4929
+        )]]
+    labels:
+      job: windows_directory_service
+      host: ${HOSTNAME}
+      os_type: server
+      category: directory_service
+      severity: high
+
+  # =========================================================================
+  # Security Events - Audit Tampering
+  # =========================================================================
+  - job_name: server_audit
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\audit-bookmark.xml
+      eventlog_name: Security
+      xpath_query: |
+        Event[System[(EventID=1100 or EventID=1102 or EventID=4719)]]
+    labels:
+      job: windows_audit
+      host: ${HOSTNAME}
+      os_type: server
+      category: audit_tampering
+      severity: critical
+
+  # =========================================================================
+  # System Events - Services
+  # =========================================================================
+  - job_name: server_services
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\services-bookmark.xml
+      eventlog_name: System
+      xpath_query: |
+        Event[System[(
+          EventID=7045 or EventID=7040 or EventID=7034 or EventID=7036
+        )]]
+    labels:
+      job: windows_services
+      host: ${HOSTNAME}
+      os_type: server
+      category: services
+      severity: high
+
+  # =========================================================================
+  # PowerShell Script Block Logging
+  # =========================================================================
+  - job_name: server_powershell
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\powershell-bookmark.xml
+      eventlog_name: Microsoft-Windows-PowerShell/Operational
+      xpath_query: |
+        Event[System[(EventID=4103 or EventID=4104)]]
+    pipeline_stages:
+      - json:
+          expressions:
+            script_block: scriptBlockText
+      - match:
+          selector: '{job="server_powershell"}'
+          stages:
+            - regex:
+                expression: '(?i)(invoke-mimikatz|invoke-expression|downloadstring|bypass|hidden|encoded|empire|covenant|psexec)'
+                source: script_block
+    labels:
+      job: windows_powershell
+      host: ${HOSTNAME}
+      os_type: server
+      category: powershell
+      severity: critical
+
+  # =========================================================================
+  # Sysmon Events
+  # =========================================================================
+  - job_name: server_sysmon
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\sysmon-bookmark.xml
+      eventlog_name: Microsoft-Windows-Sysmon/Operational
+      xpath_query: |
+        Event[System[(
+          EventID=1 or EventID=3 or EventID=5 or EventID=7 or
+          EventID=8 or EventID=10 or EventID=11 or EventID=12 or
+          EventID=13 or EventID=15 or EventID=17 or EventID=18 or
+          EventID=22 or EventID=23 or EventID=25
+        )]]
+    pipeline_stages:
+      - json:
+          expressions:
+            event_id: eventID
+            image: image
+            target_filename: targetFilename
+            destination_ip: destinationIp
+      - labels:
+          event_id:
+    labels:
+      job: windows_sysmon
+      host: ${HOSTNAME}
+      os_type: server
+      category: sysmon
+      severity: high
+
+  # =========================================================================
+  # Directory Service Log (AD DC)
+  # =========================================================================
+  - job_name: server_ds_log
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\dslog-bookmark.xml
+      eventlog_name: Directory Service
+      xpath_query: |
+        Event[System[(Level=1 or Level=2 or Level=3)]]
+    labels:
+      job: windows_ds
+      host: ${HOSTNAME}
+      os_type: server
+      category: directory_service
+      severity: high
+
+  # =========================================================================
+  # DNS Server Events
+  # =========================================================================
+  - job_name: server_dns
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\dns-bookmark.xml
+      eventlog_name: DNS Server
+      xpath_query: |
+        Event[System[(Level=1 or Level=2 or Level=3 or Level=4)]]
+    labels:
+      job: windows_dns
+      host: ${HOSTNAME}
+      os_type: server
+      category: dns
+      severity: medium
+
+  # =========================================================================
+  # DHCP Server Events
+  # =========================================================================
+  - job_name: server_dhcp
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\dhcp-bookmark.xml
+      eventlog_name: Microsoft-Windows-DHCP-Server/Operational
+      xpath_query: |
+        Event
+    labels:
+      job: windows_dhcp
+      host: ${HOSTNAME}
+      os_type: server
+      category: dhcp
+      severity: medium
+
+  # =========================================================================
+  # NPS/RADIUS Events
+  # =========================================================================
+  - job_name: server_nps
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\nps-bookmark.xml
+      eventlog_name: Security
+      xpath_query: |
+        Event[System[(
+          EventID=6272 or EventID=6273 or EventID=6274 or EventID=6275 or
+          EventID=6276 or EventID=6277 or EventID=6278 or EventID=6279 or
+          EventID=6280 or EventID=6281 or EventID=6282
+        )]]
+    labels:
+      job: windows_nps
+      host: ${HOSTNAME}
+      os_type: server
+      category: radius
+      severity: high
+
+  # =========================================================================
+  # Windows Defender Events
+  # =========================================================================
+  - job_name: server_defender
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\defender-bookmark.xml
+      eventlog_name: Microsoft-Windows-Windows Defender/Operational
+      xpath_query: |
+        Event[System[(
+          EventID=1006 or EventID=1007 or EventID=1008 or EventID=1009 or
+          EventID=1116 or EventID=1117 or EventID=1118 or EventID=1119 or
+          EventID=5001 or EventID=5007 or EventID=5010 or EventID=5012
+        )]]
+    labels:
+      job: windows_defender
+      host: ${HOSTNAME}
+      os_type: server
+      category: antivirus
+      severity: high
+
+  # =========================================================================
+  # Windows Firewall Events
+  # =========================================================================
+  - job_name: server_firewall
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\firewall-bookmark.xml
+      eventlog_name: Microsoft-Windows-Windows Firewall With Advanced Security/Firewall
+      xpath_query: |
+        Event[System[(EventID=2003 or EventID=2004 or EventID=2005 or EventID=2006)]]
+    labels:
+      job: windows_firewall
+      host: ${HOSTNAME}
+      os_type: server
+      category: firewall
+      severity: medium
+
+  # =========================================================================
+  # RDP/Terminal Services (Server perspective)
+  # =========================================================================
+  - job_name: server_rdp
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\rdp-bookmark.xml
+      eventlog_name: Microsoft-Windows-TerminalServices-LocalSessionManager/Operational
+      xpath_query: |
+        Event[System[(EventID=21 or EventID=22 or EventID=23 or EventID=24 or EventID=25)]]
+    labels:
+      job: windows_rdp
+      host: ${HOSTNAME}
+      os_type: server
+      category: remote_access
+      severity: high
+
+  # =========================================================================
+  # Group Policy Events
+  # =========================================================================
+  - job_name: server_gpo
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\gpo-bookmark.xml
+      eventlog_name: Microsoft-Windows-GroupPolicy/Operational
+      xpath_query: |
+        Event[System[(Level=1 or Level=2 or Level=3)]]
+    labels:
+      job: windows_gpo
+      host: ${HOSTNAME}
+      os_type: server
+      category: group_policy
+      severity: medium
+
+  # =========================================================================
+  # Application Errors
+  # =========================================================================
+  - job_name: server_application
+    windows_events:
+      use_incoming_timestamp: true
+      bookmark_path: C:\ProgramData\Promtail\application-bookmark.xml
+      eventlog_name: Application
+      xpath_query: |
+        Event[System[(Level=1 or Level=2)]]
+    labels:
+      job: windows_application
+      host: ${HOSTNAME}
+      os_type: server
+      category: application
+      severity: medium

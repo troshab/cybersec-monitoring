@@ -1,0 +1,189 @@
+# =============================================================================
+# Windows Alerts - Prometheus Alert Rules
+# =============================================================================
+# Алерти для Windows endpoints (Windows Exporter метрики)
+# =============================================================================
+
+groups:
+  # ===========================================================================
+  # Windows System Health
+  # ===========================================================================
+  - name: windows_system_health
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # High CPU usage
+      # -----------------------------------------------------------------------
+      - alert: WindowsHighCPU
+        expr: |
+          100 - (avg by(instance) (rate(windows_cpu_time_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+          os: windows
+        annotations:
+          summary: "Високе використання CPU на {{ $labels.instance }}"
+          description: "CPU > 85% протягом 10 хвилин. Можливий криптомайнер або DoS."
+
+      # -----------------------------------------------------------------------
+      # Very High CPU (possible cryptominer)
+      # -----------------------------------------------------------------------
+      - alert: WindowsCriticalCPU
+        expr: |
+          100 - (avg by(instance) (rate(windows_cpu_time_total{mode="idle"}[5m])) * 100) > 95
+        for: 5m
+        labels:
+          severity: critical
+          category: security
+          os: windows
+        annotations:
+          summary: "Критичне використання CPU на {{ $labels.instance }}"
+          description: "CPU > 95% - можливий криптомайнер! Негайно перевірте процеси."
+
+      # -----------------------------------------------------------------------
+      # High Memory usage
+      # -----------------------------------------------------------------------
+      - alert: WindowsHighMemory
+        expr: |
+          100 - ((windows_os_physical_memory_free_bytes / windows_cs_physical_memory_bytes) * 100) > 90
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+          os: windows
+        annotations:
+          summary: "Високе використання RAM на {{ $labels.instance }}"
+          description: "RAM > 90%. Перевірте процеси."
+
+      # -----------------------------------------------------------------------
+      # Low disk space
+      # -----------------------------------------------------------------------
+      - alert: WindowsLowDiskSpace
+        expr: |
+          100 - ((windows_logical_disk_free_bytes{volume=~"C:"} / windows_logical_disk_size_bytes{volume=~"C:"}) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: capacity
+          os: windows
+        annotations:
+          summary: "Мало місця на диску {{ $labels.instance }}"
+          description: "Диск {{ $labels.volume }} заповнений на {{ $value | printf \"%.1f\" }}%"
+
+      # -----------------------------------------------------------------------
+      # Critical disk space
+      # -----------------------------------------------------------------------
+      - alert: WindowsCriticalDiskSpace
+        expr: |
+          100 - ((windows_logical_disk_free_bytes{volume=~"C:"} / windows_logical_disk_size_bytes{volume=~"C:"}) * 100) > 95
+        for: 2m
+        labels:
+          severity: critical
+          category: capacity
+          os: windows
+        annotations:
+          summary: "Критично мало місця на диску {{ $labels.instance }}"
+          description: "Диск {{ $labels.volume }} заповнений на {{ $value | printf \"%.1f\" }}%. Можливий ransomware!"
+
+      # -----------------------------------------------------------------------
+      # Windows service stopped
+      # -----------------------------------------------------------------------
+      - alert: WindowsCriticalServiceStopped
+        expr: |
+          windows_service_state{state="running",name=~"wuauserv|WinDefend|EventLog|Dnscache"} == 0
+        for: 5m
+        labels:
+          severity: high
+          category: security
+          os: windows
+        annotations:
+          summary: "Критичний сервіс зупинено на {{ $labels.instance }}"
+          description: "Сервіс {{ $labels.name }} не запущений. Можлива атака."
+
+  # ===========================================================================
+  # Windows Security Alerts
+  # ===========================================================================
+  - name: windows_security
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # Windows Defender disabled
+      # -----------------------------------------------------------------------
+      - alert: WindowsDefenderDisabled
+        expr: |
+          windows_service_state{name="WinDefend",state="running"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: security
+          os: windows
+        annotations:
+          summary: "Windows Defender вимкнено на {{ $labels.instance }}"
+          description: "Антивірус не працює! Можлива атака або malware."
+
+      # -----------------------------------------------------------------------
+      # Windows Firewall disabled
+      # -----------------------------------------------------------------------
+      - alert: WindowsFirewallDisabled
+        expr: |
+          windows_service_state{name="mpssvc",state="running"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: security
+          os: windows
+        annotations:
+          summary: "Windows Firewall вимкнено на {{ $labels.instance }}"
+          description: "Firewall не працює! Система вразлива."
+
+      # -----------------------------------------------------------------------
+      # Event Log service stopped
+      # -----------------------------------------------------------------------
+      - alert: WindowsEventLogStopped
+        expr: |
+          windows_service_state{name="EventLog",state="running"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: security
+          os: windows
+        annotations:
+          summary: "Служба Event Log зупинена на {{ $labels.instance }}"
+          description: "Зупинка Event Log - типова тактика приховування слідів атаки!"
+
+  # ===========================================================================
+  # Windows Network Alerts
+  # ===========================================================================
+  - name: windows_network
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # High network traffic (possible exfiltration)
+      # -----------------------------------------------------------------------
+      - alert: WindowsHighOutboundTraffic
+        expr: |
+          rate(windows_net_bytes_sent_total[5m]) > 100000000
+        for: 10m
+        labels:
+          severity: warning
+          category: security
+          os: windows
+        annotations:
+          summary: "Аномально високий вихідний трафік на {{ $labels.instance }}"
+          description: "Вихідний трафік > 100MB/s протягом 10 хвилин. Можлива exfiltration."
+
+      # -----------------------------------------------------------------------
+      # Many network connections
+      # -----------------------------------------------------------------------
+      - alert: WindowsTooManyConnections
+        expr: |
+          windows_tcp_connections_established > 1000
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+          os: windows
+        annotations:
+          summary: "Багато TCP з'єднань на {{ $labels.instance }}"
+          description: "{{ $value }} активних з'єднань. Можливий C2 або сканування."

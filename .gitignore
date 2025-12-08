@@ -1,0 +1,82 @@
+# Course materials (not for public repo)
+../task.md
+../course.txt
+task.md
+course.txt
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+*.env
+
+# Secrets and credentials
+**/secrets/
+**/credentials/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Log files
+*.log
+logs/
+**/data/
+
+# Docker data volumes
+**/pgdata/
+**/mysql-data/
+**/grafana-data/
+**/prometheus-data/
+**/loki-data/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Evidence collection output
+Evidence_*/
+*.evtx
+*.tar.gz
+*.zip
+
+# Windows specific
+*.exe
+*.msi
+*.dll
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+venv/
+.venv/
+
+# Node.js (if any web tools)
+node_modules/
+package-lock.json
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Test output
+test-results/
+coverage/

@@ -1,0 +1,233 @@
+# =============================================================================
+# Linux Alerts - Prometheus Alert Rules
+# =============================================================================
+# Алерти для Linux endpoints (Node Exporter метрики)
+# =============================================================================
+
+groups:
+  # ===========================================================================
+  # Linux System Health
+  # ===========================================================================
+  - name: linux_system_health
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # High CPU usage
+      # -----------------------------------------------------------------------
+      - alert: LinuxHighCPU
+        expr: |
+          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+          os: linux
+        annotations:
+          summary: "Високе використання CPU на {{ $labels.instance }}"
+          description: "CPU > 85% протягом 10 хвилин"
+
+      # -----------------------------------------------------------------------
+      # Very High CPU (possible cryptominer)
+      # -----------------------------------------------------------------------
+      - alert: LinuxCriticalCPU
+        expr: |
+          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 95
+        for: 5m
+        labels:
+          severity: critical
+          category: security
+          os: linux
+        annotations:
+          summary: "Критичне використання CPU на {{ $labels.instance }}"
+          description: "CPU > 95% - можливий криптомайнер!"
+
+      # -----------------------------------------------------------------------
+      # High Memory usage
+      # -----------------------------------------------------------------------
+      - alert: LinuxHighMemory
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+          os: linux
+        annotations:
+          summary: "Високе використання RAM на {{ $labels.instance }}"
+          description: "RAM > 90%"
+
+      # -----------------------------------------------------------------------
+      # High Swap usage
+      # -----------------------------------------------------------------------
+      - alert: LinuxHighSwap
+        expr: |
+          (1 - (node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes)) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+          os: linux
+        annotations:
+          summary: "Високе використання Swap на {{ $labels.instance }}"
+          description: "Swap > 80%. Недостатньо RAM."
+
+      # -----------------------------------------------------------------------
+      # Low disk space
+      # -----------------------------------------------------------------------
+      - alert: LinuxLowDiskSpace
+        expr: |
+          (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: capacity
+          os: linux
+        annotations:
+          summary: "Мало місця на диску {{ $labels.instance }}"
+          description: "Root filesystem заповнений на {{ $value | printf \"%.1f\" }}%"
+
+      # -----------------------------------------------------------------------
+      # Critical disk space
+      # -----------------------------------------------------------------------
+      - alert: LinuxCriticalDiskSpace
+        expr: |
+          (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+          category: capacity
+          os: linux
+        annotations:
+          summary: "Критично мало місця на диску {{ $labels.instance }}"
+          description: "Root filesystem заповнений на {{ $value | printf \"%.1f\" }}%"
+
+      # -----------------------------------------------------------------------
+      # High disk I/O
+      # -----------------------------------------------------------------------
+      - alert: LinuxHighDiskIO
+        expr: |
+          rate(node_disk_io_time_seconds_total[5m]) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+          os: linux
+        annotations:
+          summary: "Високе I/O навантаження на {{ $labels.instance }}"
+          description: "Disk I/O > 90% протягом 10 хвилин"
+
+      # -----------------------------------------------------------------------
+      # High Load Average
+      # -----------------------------------------------------------------------
+      - alert: LinuxHighLoadAverage
+        expr: |
+          node_load15 / count without(cpu, mode) (node_cpu_seconds_total{mode="idle"}) > 2
+        for: 15m
+        labels:
+          severity: warning
+          category: performance
+          os: linux
+        annotations:
+          summary: "Високе Load Average на {{ $labels.instance }}"
+          description: "Load Average 15m перевищує кількість CPU в 2 рази"
+
+  # ===========================================================================
+  # Linux Security Alerts
+  # ===========================================================================
+  - name: linux_security
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # System uptime changed (unexpected reboot)
+      # -----------------------------------------------------------------------
+      - alert: LinuxUnexpectedReboot
+        expr: |
+          changes(node_boot_time_seconds[1h]) > 0
+        labels:
+          severity: high
+          category: security
+          os: linux
+        annotations:
+          summary: "Несподіване перезавантаження {{ $labels.instance }}"
+          description: "Система перезавантажилась. Перевірте причину."
+
+      # -----------------------------------------------------------------------
+      # Too many open files
+      # -----------------------------------------------------------------------
+      - alert: LinuxTooManyOpenFiles
+        expr: |
+          node_filefd_allocated / node_filefd_maximum * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+          os: linux
+        annotations:
+          summary: "Багато відкритих файлів на {{ $labels.instance }}"
+          description: "{{ $value | printf \"%.1f\" }}% file descriptors використано"
+
+      # -----------------------------------------------------------------------
+      # Time drift
+      # -----------------------------------------------------------------------
+      - alert: LinuxTimeDrift
+        expr: |
+          abs(node_timex_offset_seconds) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+          os: linux
+        annotations:
+          summary: "Розсинхронізація часу на {{ $labels.instance }}"
+          description: "Час відхилився на {{ $value | printf \"%.2f\" }} секунд. Важливо для логів!"
+
+  # ===========================================================================
+  # Linux Network Alerts
+  # ===========================================================================
+  - name: linux_network
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # High network traffic
+      # -----------------------------------------------------------------------
+      - alert: LinuxHighNetworkTraffic
+        expr: |
+          rate(node_network_transmit_bytes_total{device!~"lo|docker.*|br-.*"}[5m]) > 100000000
+        for: 10m
+        labels:
+          severity: warning
+          category: security
+          os: linux
+        annotations:
+          summary: "Аномально високий вихідний трафік на {{ $labels.instance }}"
+          description: "Вихідний трафік > 100MB/s. Можлива exfiltration."
+
+      # -----------------------------------------------------------------------
+      # Network interface errors
+      # -----------------------------------------------------------------------
+      - alert: LinuxNetworkErrors
+        expr: |
+          rate(node_network_receive_errs_total[5m]) > 10 or rate(node_network_transmit_errs_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: network
+          os: linux
+        annotations:
+          summary: "Мережеві помилки на {{ $labels.instance }}"
+          description: "Інтерфейс {{ $labels.device }} має помилки передачі"
+
+      # -----------------------------------------------------------------------
+      # Network interface down
+      # -----------------------------------------------------------------------
+      - alert: LinuxNetworkInterfaceDown
+        expr: |
+          node_network_up{device!~"lo|docker.*|br-.*|veth.*"} == 0
+        for: 2m
+        labels:
+          severity: high
+          category: network
+          os: linux
+        annotations:
+          summary: "Мережевий інтерфейс не працює на {{ $labels.instance }}"
+          description: "Інтерфейс {{ $labels.device }} down"

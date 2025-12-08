@@ -1,0 +1,216 @@
+# =============================================================================
+# Alertmanager Configuration
+# =============================================================================
+# Cybersec Monitoring Stack
+# Маршрутизація сповіщень на email, Pushover, Telegram
+# =============================================================================
+
+global:
+  # Email налаштування
+  smtp_smarthost: '${SMTP_SMARTHOST:-smtp.gmail.com:587}'
+  smtp_from: '${SMTP_FROM:-monitoring@company.ua}'
+  smtp_auth_username: '${SMTP_AUTH_USERNAME}'
+  smtp_auth_password: '${SMTP_AUTH_PASSWORD}'
+  smtp_require_tls: true
+
+  # Resolve timeout
+  resolve_timeout: 5m
+
+# =============================================================================
+# Шаблони для повідомлень
+# =============================================================================
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# =============================================================================
+# Маршрутизація алертів
+# =============================================================================
+route:
+  # Поля для групування алертів
+  group_by: ['alertname', 'severity', 'instance']
+
+  # Час очікування перед відправкою групи
+  group_wait: 30s
+
+  # Інтервал між повідомленнями для однієї групи
+  group_interval: 5m
+
+  # Інтервал повторної відправки
+  repeat_interval: 4h
+
+  # Отримувач за замовчуванням
+  receiver: 'email-critical'
+
+  # Дочірні маршрути
+  routes:
+    # -------------------------------------------------------------------------
+    # CRITICAL - негайне сповіщення всіма каналами
+    # -------------------------------------------------------------------------
+    - match:
+        severity: critical
+      receiver: 'critical-all-channels'
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: false
+
+    # -------------------------------------------------------------------------
+    # HIGH - email + pushover
+    # -------------------------------------------------------------------------
+    - match:
+        severity: high
+      receiver: 'email-high'
+      group_wait: 1m
+      repeat_interval: 2h
+      continue: false
+
+    # -------------------------------------------------------------------------
+    # Infrastructure alerts - окремий канал
+    # -------------------------------------------------------------------------
+    - match:
+        category: infrastructure
+      receiver: 'email-infrastructure'
+      group_wait: 30s
+      repeat_interval: 1h
+      continue: false
+
+    # -------------------------------------------------------------------------
+    # Security alerts - терміново
+    # -------------------------------------------------------------------------
+    - match:
+        category: security
+      receiver: 'critical-all-channels'
+      group_wait: 10s
+      repeat_interval: 30m
+      continue: false
+
+    # -------------------------------------------------------------------------
+    # Warning - тільки email
+    # -------------------------------------------------------------------------
+    - match:
+        severity: warning
+      receiver: 'email-warning'
+      group_wait: 5m
+      repeat_interval: 12h
+      continue: false
+
+# =============================================================================
+# Отримувачі (receivers)
+# =============================================================================
+receivers:
+  # ---------------------------------------------------------------------------
+  # Email для критичних алертів
+  # ---------------------------------------------------------------------------
+  - name: 'email-critical'
+    email_configs:
+      - to: '${ALERT_EMAIL_TO:-admin@company.ua}'
+        send_resolved: true
+        headers:
+          Subject: '🔴 CRITICAL: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>🔴 Критичний алерт!</h2>
+          <p><strong>Алерт:</strong> {{ .GroupLabels.alertname }}</p>
+          <p><strong>Час:</strong> {{ .StartsAt.Format "2006-01-02 15:04:05" }}</p>
+          {{ range .Alerts }}
+          <hr>
+          <p><strong>Instance:</strong> {{ .Labels.instance }}</p>
+          <p><strong>Опис:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Severity:</strong> {{ .Labels.severity }}</p>
+          {{ end }}
+          <hr>
+          <p><a href="http://${MONITORING_SERVER_IP}:3000">Відкрити Grafana</a></p>
+
+  # ---------------------------------------------------------------------------
+  # Email для high severity
+  # ---------------------------------------------------------------------------
+  - name: 'email-high'
+    email_configs:
+      - to: '${ALERT_EMAIL_TO:-admin@company.ua}'
+        send_resolved: true
+        headers:
+          Subject: '🟠 HIGH: {{ .GroupLabels.alertname }}'
+
+  # ---------------------------------------------------------------------------
+  # Email для warning
+  # ---------------------------------------------------------------------------
+  - name: 'email-warning'
+    email_configs:
+      - to: '${ALERT_EMAIL_TO:-admin@company.ua}'
+        send_resolved: true
+        headers:
+          Subject: '🟡 Warning: {{ .GroupLabels.alertname }}'
+
+  # ---------------------------------------------------------------------------
+  # Email для infrastructure
+  # ---------------------------------------------------------------------------
+  - name: 'email-infrastructure'
+    email_configs:
+      - to: '${ALERT_EMAIL_TO:-admin@company.ua}'
+        send_resolved: true
+        headers:
+          Subject: '🔧 Infrastructure: {{ .GroupLabels.alertname }}'
+
+  # ---------------------------------------------------------------------------
+  # Всі канали для критичних алертів
+  # ---------------------------------------------------------------------------
+  - name: 'critical-all-channels'
+    email_configs:
+      - to: '${ALERT_EMAIL_TO:-admin@company.ua}'
+        send_resolved: true
+        headers:
+          Subject: '🚨 CRITICAL SECURITY: {{ .GroupLabels.alertname }}'
+
+    # Pushover (мобільні сповіщення) - розкоментуйте якщо використовуєте
+    # pushover_configs:
+    #   - user_key: '${PUSHOVER_USER_KEY}'
+    #     token: '${PUSHOVER_API_TOKEN}'
+    #     priority: 1
+    #     title: '🚨 {{ .GroupLabels.alertname }}'
+    #     message: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+    #     send_resolved: true
+
+    # Telegram - розкоментуйте якщо використовуєте
+    # telegram_configs:
+    #   - bot_token: '${TELEGRAM_BOT_TOKEN}'
+    #     chat_id: ${TELEGRAM_CHAT_ID}
+    #     parse_mode: HTML
+    #     message: |
+    #       🚨 <b>{{ .GroupLabels.alertname }}</b>
+    #       {{ range .Alerts }}
+    #       <b>Instance:</b> {{ .Labels.instance }}
+    #       {{ .Annotations.description }}
+    #       {{ end }}
+
+    # Webhook - для інтеграції з іншими системами
+    # webhook_configs:
+    #   - url: 'http://your-webhook-endpoint/alert'
+    #     send_resolved: true
+
+  # ---------------------------------------------------------------------------
+  # Null receiver (для ігнорування певних алертів)
+  # ---------------------------------------------------------------------------
+  - name: 'null'
+
+# =============================================================================
+# Inhibition rules - придушення алертів
+# =============================================================================
+inhibit_rules:
+  # Якщо критичний алерт - придушити warning для того ж instance
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+  # Якщо сервер down - не слати алерти про його сервіси
+  - source_match:
+      alertname: 'EndpointDown'
+    target_match_re:
+      alertname: '.*High.*|.*Low.*'
+    equal: ['instance']
+
+  # Якщо моніторинг down - не слати нічого
+  - source_match:
+      alertname: 'PrometheusDown'
+    target_match_re:
+      alertname: '.*'
+    equal: []
