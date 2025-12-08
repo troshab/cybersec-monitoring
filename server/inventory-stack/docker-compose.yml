@@ -1,0 +1,192 @@
+# =============================================================================
+# Inventory Stack - Docker Compose
+# =============================================================================
+# Netdisco (мережева інвентаризація) + FleetDM (endpoints інвентаризація)
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # NETDISCO - Автоматична інвентаризація мережі
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL для Netdisco
+  # ---------------------------------------------------------------------------
+  netdisco-postgresql:
+    image: netdisco/netdisco:latest-postgresql
+    container_name: netdisco-db
+    restart: unless-stopped
+    volumes:
+      - ./netdisco/pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: netdisco
+      POSTGRES_USER: netdisco
+      POSTGRES_PASSWORD: ${NETDISCO_DB_PASSWORD:-netdisco_secure_password}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netdisco"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - inventory
+
+  # ---------------------------------------------------------------------------
+  # Ініціалізація бази даних Netdisco
+  # ---------------------------------------------------------------------------
+  netdisco-db-init:
+    image: netdisco/netdisco:latest-do
+    container_name: netdisco-init
+    entrypoint: ''
+    command: "/home/netdisco/bin/netdisco-env /home/netdisco/bin/netdisco-db-deploy"
+    depends_on:
+      netdisco-postgresql:
+        condition: service_healthy
+    environment:
+      NETDISCO_DB_HOST: netdisco-postgresql
+      NETDISCO_DB_USER: netdisco
+      NETDISCO_DB_PASS: ${NETDISCO_DB_PASSWORD:-netdisco_secure_password}
+    networks:
+      - inventory
+
+  # ---------------------------------------------------------------------------
+  # Netdisco Backend - збирач даних
+  # ---------------------------------------------------------------------------
+  netdisco-backend:
+    image: netdisco/netdisco:latest-backend
+    container_name: netdisco-backend
+    hostname: netdisco-backend
+    restart: unless-stopped
+    depends_on:
+      netdisco-db-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./netdisco/config:/home/netdisco/environments
+      - ./netdisco/logs:/home/netdisco/logs
+      - ./netdisco/nd-site-local:/home/netdisco/nd-site-local
+    environment:
+      NETDISCO_DB_HOST: netdisco-postgresql
+      NETDISCO_DB_USER: netdisco
+      NETDISCO_DB_PASS: ${NETDISCO_DB_PASSWORD:-netdisco_secure_password}
+    networks:
+      - inventory
+
+  # ---------------------------------------------------------------------------
+  # Netdisco Web - інтерфейс
+  # ---------------------------------------------------------------------------
+  netdisco-web:
+    image: netdisco/netdisco:latest-web
+    container_name: netdisco-web
+    hostname: netdisco-web
+    restart: unless-stopped
+    depends_on:
+      netdisco-db-init:
+        condition: service_completed_successfully
+    ports:
+      - "${NETDISCO_PORT:-5000}:5000"
+    volumes:
+      - ./netdisco/config:/home/netdisco/environments
+      - ./netdisco/logs:/home/netdisco/logs
+      - ./netdisco/nd-site-local:/home/netdisco/nd-site-local
+    environment:
+      NETDISCO_DB_HOST: netdisco-postgresql
+      NETDISCO_DB_USER: netdisco
+      NETDISCO_DB_PASS: ${NETDISCO_DB_PASSWORD:-netdisco_secure_password}
+    networks:
+      - inventory
+
+  # ===========================================================================
+  # FLEETDM - Інвентаризація endpoints через osquery
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # MySQL для FleetDM
+  # ---------------------------------------------------------------------------
+  fleet-mysql:
+    image: mysql:8.0
+    container_name: fleet-mysql
+    restart: unless-stopped
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --gtid-mode=ON
+      --enforce-gtid-consistency=ON
+    environment:
+      MYSQL_ROOT_PASSWORD: ${FLEET_MYSQL_ROOT_PASSWORD:-fleet_root_password}
+      MYSQL_DATABASE: fleet
+      MYSQL_USER: fleet
+      MYSQL_PASSWORD: ${FLEET_MYSQL_PASSWORD:-fleet_user_password}
+    volumes:
+      - fleet-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${FLEET_MYSQL_ROOT_PASSWORD:-fleet_root_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - inventory
+
+  # ---------------------------------------------------------------------------
+  # Redis для FleetDM
+  # ---------------------------------------------------------------------------
+  fleet-redis:
+    image: redis:7-alpine
+    container_name: fleet-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - inventory
+
+  # ---------------------------------------------------------------------------
+  # FleetDM Server
+  # ---------------------------------------------------------------------------
+  fleet:
+    image: fleetdm/fleet:latest
+    container_name: fleet-server
+    restart: unless-stopped
+    depends_on:
+      fleet-mysql:
+        condition: service_healthy
+      fleet-redis:
+        condition: service_healthy
+    command: sh -c "/usr/bin/fleet prepare db --no-prompt && /usr/bin/fleet serve"
+    ports:
+      - "${FLEET_PORT:-8080}:8080"
+    volumes:
+      - ./fleetdm/certs:/certs:ro
+      - fleet-logs:/logs
+    environment:
+      FLEET_MYSQL_ADDRESS: fleet-mysql:3306
+      FLEET_MYSQL_DATABASE: fleet
+      FLEET_MYSQL_USERNAME: fleet
+      FLEET_MYSQL_PASSWORD: ${FLEET_MYSQL_PASSWORD:-fleet_user_password}
+      FLEET_REDIS_ADDRESS: fleet-redis:6379
+      FLEET_SERVER_ADDRESS: 0.0.0.0:8080
+      FLEET_SERVER_CERT: /certs/fleet.crt
+      FLEET_SERVER_KEY: /certs/fleet.key
+      FLEET_SERVER_PRIVATE_KEY: ${FLEET_SERVER_PRIVATE_KEY}
+      FLEET_LOGGING_JSON: "true"
+      FLEET_OSQUERY_STATUS_LOG_PLUGIN: filesystem
+      FLEET_OSQUERY_RESULT_LOG_PLUGIN: filesystem
+      FLEET_FILESYSTEM_STATUS_LOG_FILE: /logs/osqueryd.status.log
+      FLEET_FILESYSTEM_RESULT_LOG_FILE: /logs/osqueryd.results.log
+    networks:
+      - inventory
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  fleet-mysql-data:
+    driver: local
+  fleet-logs:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  inventory:
+    driver: bridge

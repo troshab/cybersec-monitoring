@@ -1,0 +1,130 @@
+# =============================================================================
+# Prometheus Configuration
+# =============================================================================
+# Cybersec Monitoring Stack
+# =============================================================================
+
+global:
+  scrape_interval: 30s          # Як часто збирати метрики
+  evaluation_interval: 30s       # Як часто перевіряти правила
+  external_labels:
+    monitor: 'cybersec-monitoring'
+    environment: 'production'
+
+# =============================================================================
+# Alerting - підключення до Alertmanager
+# =============================================================================
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+      timeout: 10s
+
+# =============================================================================
+# Rule files - правила для алертів
+# =============================================================================
+rule_files:
+  - /etc/prometheus/alerts/*.yml
+
+# =============================================================================
+# Scrape configs - що моніторити
+# =============================================================================
+scrape_configs:
+  # ---------------------------------------------------------------------------
+  # Prometheus self-monitoring
+  # ---------------------------------------------------------------------------
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          instance: 'prometheus'
+          environment: 'monitoring'
+          critical: 'true'
+
+  # ---------------------------------------------------------------------------
+  # Monitoring Server - Node Exporter
+  # ---------------------------------------------------------------------------
+  - job_name: 'monitoring-server'
+    static_configs:
+      - targets: ['host.docker.internal:9100']
+        labels:
+          instance: 'monitoring-server'
+          environment: 'monitoring'
+          os: 'linux'
+          critical: 'true'
+
+  # ---------------------------------------------------------------------------
+  # Loki
+  # ---------------------------------------------------------------------------
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+        labels:
+          instance: 'loki'
+          environment: 'monitoring'
+          critical: 'true'
+
+  # ---------------------------------------------------------------------------
+  # Grafana
+  # ---------------------------------------------------------------------------
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+        labels:
+          instance: 'grafana'
+          environment: 'monitoring'
+
+  # ---------------------------------------------------------------------------
+  # Alertmanager
+  # ---------------------------------------------------------------------------
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+        labels:
+          instance: 'alertmanager'
+          environment: 'monitoring'
+
+  # ---------------------------------------------------------------------------
+  # Windows Endpoints - Node Exporter
+  # Розкоментуйте та додайте ваші Windows машини
+  # ---------------------------------------------------------------------------
+  # - job_name: 'windows-endpoints'
+  #   static_configs:
+  #     - targets:
+  #       - '192.168.1.10:9182'  # Windows Exporter порт
+  #       - '192.168.1.11:9182'
+  #       labels:
+  #         environment: 'production'
+  #         os: 'windows'
+  #         type: 'client'
+  #
+  #     - targets:
+  #       - '192.168.1.5:9182'   # Windows Server
+  #       labels:
+  #         environment: 'production'
+  #         os: 'windows'
+  #         type: 'server'
+  #         critical: 'true'
+
+  # ---------------------------------------------------------------------------
+  # Linux Endpoints - Node Exporter
+  # Розкоментуйте та додайте ваші Linux машини
+  # ---------------------------------------------------------------------------
+  # - job_name: 'linux-endpoints'
+  #   static_configs:
+  #     - targets:
+  #       - '192.168.1.20:9100'
+  #       - '192.168.1.21:9100'
+  #       labels:
+  #         environment: 'production'
+  #         os: 'linux'
+
+  # ---------------------------------------------------------------------------
+  # File-based service discovery (альтернатива для динамічного списку)
+  # ---------------------------------------------------------------------------
+  # - job_name: 'file-sd-endpoints'
+  #   file_sd_configs:
+  #     - files:
+  #       - /etc/prometheus/targets/*.json
+  #       refresh_interval: 5m

@@ -1,0 +1,197 @@
+# =============================================================================
+# Network Equipment Alerts - Prometheus Alert Rules
+# =============================================================================
+# Алерти для мережевого обладнання (SNMP Exporter метрики)
+# =============================================================================
+
+groups:
+  # ===========================================================================
+  # Network Device Availability
+  # ===========================================================================
+  - name: network_availability
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # Network device down
+      # -----------------------------------------------------------------------
+      - alert: NetworkDeviceDown
+        expr: |
+          up{job=~".*snmp.*|.*network.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: network
+        annotations:
+          summary: "Мережевий пристрій недоступний"
+          description: "{{ $labels.instance }} не відповідає вже 2 хвилини"
+
+      # -----------------------------------------------------------------------
+      # Core switch down
+      # -----------------------------------------------------------------------
+      - alert: CoreSwitchDown
+        expr: |
+          up{job=~".*snmp.*",critical="true"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: network
+        annotations:
+          summary: "Критичний мережевий пристрій недоступний!"
+          description: "Core switch/router {{ $labels.instance }} не відповідає!"
+
+  # ===========================================================================
+  # Interface Monitoring
+  # ===========================================================================
+  - name: network_interfaces
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # Interface down
+      # -----------------------------------------------------------------------
+      - alert: NetworkInterfaceDown
+        expr: |
+          ifOperStatus == 2 and ifAdminStatus == 1
+        for: 2m
+        labels:
+          severity: high
+          category: network
+        annotations:
+          summary: "Мережевий інтерфейс down"
+          description: "Інтерфейс {{ $labels.ifDescr }} на {{ $labels.instance }} в стані down"
+
+      # -----------------------------------------------------------------------
+      # High interface utilization
+      # -----------------------------------------------------------------------
+      - alert: NetworkInterfaceHighUtilization
+        expr: |
+          (rate(ifHCInOctets[5m]) + rate(ifHCOutOctets[5m])) / ifHighSpeed / 1000000 * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          category: network
+        annotations:
+          summary: "Високе навантаження на інтерфейсі"
+          description: "Інтерфейс {{ $labels.ifDescr }} на {{ $labels.instance }} завантажений на {{ $value | printf \"%.1f\" }}%"
+
+      # -----------------------------------------------------------------------
+      # Interface errors
+      # -----------------------------------------------------------------------
+      - alert: NetworkInterfaceErrors
+        expr: |
+          rate(ifInErrors[5m]) > 10 or rate(ifOutErrors[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: network
+        annotations:
+          summary: "Помилки на мережевому інтерфейсі"
+          description: "Інтерфейс {{ $labels.ifDescr }} на {{ $labels.instance }} має помилки"
+
+      # -----------------------------------------------------------------------
+      # CRC errors (possible cable/hardware issue)
+      # -----------------------------------------------------------------------
+      - alert: NetworkCRCErrors
+        expr: |
+          rate(ifInErrors[5m]) > 50
+        for: 5m
+        labels:
+          severity: high
+          category: network
+        annotations:
+          summary: "Багато CRC помилок"
+          description: "Інтерфейс {{ $labels.ifDescr }} - можлива проблема з кабелем або обладнанням"
+
+  # ===========================================================================
+  # Network Security
+  # ===========================================================================
+  - name: network_security
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # Unusual broadcast/multicast traffic
+      # -----------------------------------------------------------------------
+      - alert: NetworkBroadcastStorm
+        expr: |
+          rate(ifHCInBroadcastPkts[5m]) > 10000
+        for: 5m
+        labels:
+          severity: high
+          category: security
+        annotations:
+          summary: "Можливий broadcast storm"
+          description: "Аномальна кількість broadcast пакетів на {{ $labels.instance }}"
+
+      # -----------------------------------------------------------------------
+      # Port flapping
+      # -----------------------------------------------------------------------
+      - alert: NetworkPortFlapping
+        expr: |
+          changes(ifOperStatus[10m]) > 5
+        labels:
+          severity: warning
+          category: network
+        annotations:
+          summary: "Port flapping виявлено"
+          description: "Інтерфейс {{ $labels.ifDescr }} на {{ $labels.instance }} часто змінює стан"
+
+  # ===========================================================================
+  # Device Health
+  # ===========================================================================
+  - name: network_device_health
+    interval: 60s
+    rules:
+      # -----------------------------------------------------------------------
+      # High CPU on network device
+      # -----------------------------------------------------------------------
+      - alert: NetworkDeviceHighCPU
+        expr: |
+          cpmCPUTotal5minRev > 80 or hrProcessorLoad > 80
+        for: 10m
+        labels:
+          severity: warning
+          category: network
+        annotations:
+          summary: "Високе навантаження CPU на мережевому пристрої"
+          description: "CPU > 80% на {{ $labels.instance }}"
+
+      # -----------------------------------------------------------------------
+      # High memory on network device
+      # -----------------------------------------------------------------------
+      - alert: NetworkDeviceHighMemory
+        expr: |
+          (ciscoMemoryPoolUsed / (ciscoMemoryPoolUsed + ciscoMemoryPoolFree)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          category: network
+        annotations:
+          summary: "Високе використання пам'яті на мережевому пристрої"
+          description: "Memory > 85% на {{ $labels.instance }}"
+
+      # -----------------------------------------------------------------------
+      # Device temperature high
+      # -----------------------------------------------------------------------
+      - alert: NetworkDeviceHighTemperature
+        expr: |
+          entPhySensorValue{entPhySensorType="8"} > 60
+        for: 5m
+        labels:
+          severity: warning
+          category: hardware
+        annotations:
+          summary: "Висока температура мережевого пристрою"
+          description: "Температура {{ $value }}°C на {{ $labels.instance }}"
+
+      # -----------------------------------------------------------------------
+      # Power supply failure
+      # -----------------------------------------------------------------------
+      - alert: NetworkDevicePowerSupplyFailed
+        expr: |
+          cefcFRUPowerOperStatus != 2
+        for: 1m
+        labels:
+          severity: critical
+          category: hardware
+        annotations:
+          summary: "Збій блока живлення"
+          description: "Power supply проблема на {{ $labels.instance }}"

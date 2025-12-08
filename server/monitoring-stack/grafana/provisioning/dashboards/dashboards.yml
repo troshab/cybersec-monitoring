@@ -1,0 +1,23 @@
+# =============================================================================
+# Grafana Dashboards Provisioning
+# =============================================================================
+# Автоматичний імпорт дашбордів при старті
+# =============================================================================
+
+apiVersion: 1
+
+providers:
+  # ---------------------------------------------------------------------------
+  # Security Dashboards
+  # ---------------------------------------------------------------------------
+  - name: 'Security Dashboards'
+    orgId: 1
+    folder: 'Security'
+    folderUid: 'security'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 60
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

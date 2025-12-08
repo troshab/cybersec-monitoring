@@ -1,0 +1,158 @@
+# =============================================================================
+# Critical Alerts - Prometheus Alert Rules
+# =============================================================================
+# Критичні алерти що потребують негайної реакції
+# =============================================================================
+
+groups:
+  # ===========================================================================
+  # Monitoring Infrastructure Alerts
+  # ===========================================================================
+  - name: monitoring_infrastructure
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # Prometheus down
+      # -----------------------------------------------------------------------
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "Prometheus не відповідає"
+          description: "Prometheus сервер недоступний вже {{ $value }} хвилин"
+          runbook: "Перевірте docker logs prometheus"
+
+      # -----------------------------------------------------------------------
+      # Loki down
+      # -----------------------------------------------------------------------
+      - alert: LokiDown
+        expr: up{job="loki"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "Loki не відповідає"
+          description: "Loki сервер недоступний - логи не збираються!"
+          runbook: "Перевірте docker logs loki"
+
+      # -----------------------------------------------------------------------
+      # Grafana down
+      # -----------------------------------------------------------------------
+      - alert: GrafanaDown
+        expr: up{job="grafana"} == 0
+        for: 2m
+        labels:
+          severity: high
+          category: infrastructure
+        annotations:
+          summary: "Grafana не відповідає"
+          description: "Grafana веб-інтерфейс недоступний"
+          runbook: "Перевірте docker logs grafana"
+
+      # -----------------------------------------------------------------------
+      # Alertmanager down
+      # -----------------------------------------------------------------------
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "Alertmanager не відповідає"
+          description: "Alertmanager недоступний - сповіщення не надсилаються!"
+          runbook: "Перевірте docker logs alertmanager"
+
+      # -----------------------------------------------------------------------
+      # Monitoring server disk space
+      # -----------------------------------------------------------------------
+      - alert: MonitoringDiskSpaceCritical
+        expr: |
+          (node_filesystem_avail_bytes{instance="monitoring-server",mountpoint="/"}
+           / node_filesystem_size_bytes{instance="monitoring-server",mountpoint="/"} * 100) < 10
+        for: 5m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "Критично мало місця на сервері моніторингу"
+          description: "Залишилось менше 10% дискового простору на {{ $labels.instance }}"
+          runbook: "Очистіть старі логи або розширте диск"
+
+      # -----------------------------------------------------------------------
+      # Monitoring server high CPU
+      # -----------------------------------------------------------------------
+      - alert: MonitoringHighCPU
+        expr: |
+          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle",instance="monitoring-server"}[5m])) * 100) > 90
+        for: 10m
+        labels:
+          severity: high
+          category: infrastructure
+        annotations:
+          summary: "Високе навантаження CPU на сервері моніторингу"
+          description: "CPU використання > 90% на {{ $labels.instance }} протягом 10 хвилин"
+
+      # -----------------------------------------------------------------------
+      # Monitoring server high memory
+      # -----------------------------------------------------------------------
+      - alert: MonitoringHighMemory
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes{instance="monitoring-server"}
+           / node_memory_MemTotal_bytes{instance="monitoring-server"})) * 100 > 90
+        for: 5m
+        labels:
+          severity: high
+          category: infrastructure
+        annotations:
+          summary: "Високе використання пам'яті на сервері моніторингу"
+          description: "RAM використання > 90% на {{ $labels.instance }}"
+
+  # ===========================================================================
+  # Endpoint Availability Alerts
+  # ===========================================================================
+  - name: endpoint_availability
+    interval: 30s
+    rules:
+      # -----------------------------------------------------------------------
+      # Critical endpoint down
+      # -----------------------------------------------------------------------
+      - alert: CriticalEndpointDown
+        expr: up{critical="true"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Критичний endpoint недоступний"
+          description: "{{ $labels.instance }} ({{ $labels.job }}) недоступний вже 2 хвилини"
+
+      # -----------------------------------------------------------------------
+      # Any endpoint down
+      # -----------------------------------------------------------------------
+      - alert: EndpointDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: high
+          category: availability
+        annotations:
+          summary: "Endpoint недоступний"
+          description: "{{ $labels.instance }} ({{ $labels.job }}) недоступний вже 5 хвилин"
+
+      # -----------------------------------------------------------------------
+      # Too many endpoints down
+      # -----------------------------------------------------------------------
+      - alert: ManyEndpointsDown
+        expr: count(up == 0) > 3
+        for: 5m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Багато endpoints недоступні"
+          description: "{{ $value }} endpoints недоступні одночасно - можлива атака або збій мережі"
