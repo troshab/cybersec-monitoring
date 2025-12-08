@@ -48,14 +48,17 @@ Scripts for testing detection capabilities from an attacker's perspective.
 # Make scripts executable
 chmod +x *.sh
 
-# Run single test
-./01-network-discovery.sh -t 192.168.1.0/24
+# Run single test against Windows Server 2025
+./01-network-discovery.sh -t 10.0.1.3
 
-# Run all tests
-./run-all-tests.sh -t 192.168.1.100
+# Run all tests against Windows Server
+./run-all-tests.sh -t 10.0.1.3
 
-# Run with custom delay
-./run-all-tests.sh -t 192.168.1.100 -d 30
+# Run against Windows 11 client
+./run-all-tests.sh -t 10.0.1.4 -d 30
+
+# Run with credentials for lateral movement tests
+./run-all-tests.sh -t 10.0.1.3 -u monadmin -p 'Mon!123admin'
 ```
 
 ## Safety Notes

@@ -113,20 +113,20 @@ sudo ./server/01-install.sh
 ### 3. Розгортання на Windows клієнтах
 
 ```powershell
-# Запуск від адміністратора
-.\windows-11-client\Deploy-Client.ps1 -LokiUrl "http://monitoring-server:3100"
+# Запуск від адміністратора на Windows 11 (10.0.1.4)
+.\windows-11-client\Deploy-Client.ps1 -LokiUrl "http://10.0.1.2:3100"
 ```
 
 ### 4. Розгортання на Windows серверах
 
 ```powershell
-# Запуск від адміністратора
-.\windows-server-2025\Deploy-Server.ps1 -LokiUrl "http://monitoring-server:3100"
+# Запуск від адміністратора на Windows Server 2025 (10.0.1.3)
+.\windows-server-2025\Deploy-Server.ps1 -LokiUrl "http://10.0.1.2:3100"
 ```
 
 ### 5. Перевірка роботи
 
-1. Відкрийте Grafana: `http://monitoring-server:3000`
+1. Відкрийте Grafana: `http://10.0.1.2:3000`
 2. Логін: admin / (пароль з .env)
 3. Перевірте дашборд "Security Overview"
 
@@ -222,57 +222,16 @@ cybersec-monitoring/
 ./kali-testing/run-all-tests.sh
 ```
 
-## Troubleshooting
+## Lab Environment
 
-### Логи не надходять в Loki
+| Host | IP | OS | Credentials |
+|------|----|----|-------------|
+| Monitoring Server | 10.0.1.2 | Debian 13 | monadmin / Mon!123admin |
+| Domain Controller | 10.0.1.3 | Windows Server 2025 | LAB\monadmin / Mon!123admin |
+| Windows Client | 10.0.1.4 | Windows 11 | LAB\pc / Mon!123admin |
 
-1. Перевірте що Promtail запущено: `Get-Service Promtail`
-2. Перевірте конфіг: шлях до Loki правильний?
-3. Перевірте firewall: порт 3100 відкритий?
-4. Перегляньте логи Promtail: `C:\ProgramData\Promtail\promtail.log`
-
-### Grafana не показує дані
-
-1. Перевірте datasources: Settings → Data Sources → Test
-2. Перевірте що Loki працює: `curl http://localhost:3100/ready`
-3. Перевірте часовий діапазон на дашборді
-
-### Alertmanager не надсилає email
-
-1. Перевірте SMTP налаштування в .env
-2. Для Gmail потрібен App Password
-3. Перевірте логи: `docker logs alertmanager`
-
-## Безпека
-
-⚠️ **Важливо:**
-
-1. **Змініть всі паролі** в .env перед розгортанням
-2. **Обмежте доступ** до сервера моніторингу (firewall)
-3. **Використовуйте HTTPS** для Grafana в production
-4. **Регулярно оновлюйте** всі компоненти
-5. **Робіть backup** конфігурації щодня
-
-## Корисні посилання
-
-- [CERT-UA](https://cert.gov.ua/) - Рекомендації з кібербезпеки
-- [Grafana Documentation](https://grafana.com/docs/)
-- [Loki Documentation](https://grafana.com/docs/loki/)
-- [Sysmon Configuration](https://github.com/SwiftOnSecurity/sysmon-config)
-- [MITRE ATT&CK](https://attack.mitre.org/) - Матриця атак
-
-## Підтримка
-
-- 📧 Email: support@example.com
-- 🐛 Issues: GitHub Issues
-- 📚 Wiki: GitHub Wiki
+**Domain:** LAB (lab.local)
 
 ## Ліцензія
 
 MIT License - див. файл [LICENSE](LICENSE)
-
----
-
-**Створено:** 2024-12
-**Автор:** Cybersecurity Training Course
-**Версія:** 1.0

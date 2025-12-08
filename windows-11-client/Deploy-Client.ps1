@@ -27,10 +27,10 @@
     Пропустити встановлення osquery
 
 .EXAMPLE
-    .\Deploy-Client.ps1 -LokiUrl "http://192.168.1.100:3100"
+    .\Deploy-Client.ps1 -LokiUrl "http://10.0.1.2:3100"
 
 .EXAMPLE
-    .\Deploy-Client.ps1 -LokiUrl "http://loki:3100" -FleetUrl "https://fleet:8080" -FleetEnrollSecret "secret"
+    .\Deploy-Client.ps1 -LokiUrl "http://10.0.1.2:3100" -FleetUrl "https://10.0.1.2:8080" -FleetEnrollSecret "secret"
 
 .NOTES
     Запускати від адміністратора

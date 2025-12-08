@@ -16,10 +16,10 @@
     Версія Promtail для завантаження
 
 .EXAMPLE
-    .\04-Install-Promtail.ps1 -LokiUrl "http://192.168.1.100:3100"
+    .\04-Install-Promtail.ps1 -LokiUrl "http://10.0.1.2:3100"
 
 .EXAMPLE
-    .\04-Install-Promtail.ps1 -LokiUrl "http://loki:3100" -ConfigPath ".\promtail.yml"
+    .\04-Install-Promtail.ps1 -LokiUrl "http://10.0.1.2:3100" -ConfigPath ".\promtail.yml"
 
 .NOTES
     Promtail надсилає логи до Loki для централізованого зберігання

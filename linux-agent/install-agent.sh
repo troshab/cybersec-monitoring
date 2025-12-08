@@ -73,7 +73,7 @@ usage() {
 Usage: $0 [OPTIONS]
 
 Required:
-  --loki-url URL          URL сервера Loki (наприклад: http://192.168.1.100:3100)
+  --loki-url URL          URL сервера Loki (наприклад: http://10.0.1.2:3100)
 
 Optional:
   --fleet-url URL         URL FleetDM сервера
@@ -85,8 +85,8 @@ Optional:
   -h, --help              Показати цю довідку
 
 Examples:
-  $0 --loki-url "http://192.168.1.100:3100"
-  $0 --loki-url "http://loki:3100" --fleet-url "https://fleet:8080" --fleet-secret "abc123"
+  $0 --loki-url "http://10.0.1.2:3100"
+  $0 --loki-url "http://10.0.1.2:3100" --fleet-url "https://10.0.1.2:8080" --fleet-secret "abc123"
 
 EOF
     exit 1
