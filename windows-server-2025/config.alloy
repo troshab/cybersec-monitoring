@@ -1,0 +1,271 @@
+// =============================================================================
+// Grafana Alloy Configuration - Windows Server 2025
+// =============================================================================
+// Optimized for Windows Server with AD DS, DNS, DHCP, File Server
+// Alloy 1.x (replaces deprecated Promtail)
+// =============================================================================
+
+// =============================================================================
+// Loki destination
+// =============================================================================
+loki.write "default" {
+  endpoint {
+    url = "http://10.0.1.2:3100/loki/api/v1/push"
+  }
+}
+
+// =============================================================================
+// Security Events - Authentication
+// =============================================================================
+loki.source.windowsevent "auth" {
+  eventlog_name = "Security"
+  xpath_query   = "Event[System[(EventID=4624 or EventID=4625 or EventID=4634 or EventID=4647 or EventID=4648 or EventID=4672 or EventID=4768 or EventID=4769 or EventID=4770 or EventID=4771 or EventID=4776 or EventID=4740)]]"
+  labels = {
+    job       = "windows_auth",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "authentication",
+    severity  = "high",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Security Events - Account Management (AD)
+// =============================================================================
+loki.source.windowsevent "accounts" {
+  eventlog_name = "Security"
+  xpath_query   = "Event[System[(EventID=4720 or EventID=4722 or EventID=4723 or EventID=4724 or EventID=4725 or EventID=4726 or EventID=4727 or EventID=4728 or EventID=4729 or EventID=4730 or EventID=4731 or EventID=4732 or EventID=4733 or EventID=4734 or EventID=4735 or EventID=4738 or EventID=4741 or EventID=4742 or EventID=4743)]]"
+  labels = {
+    job       = "windows_accounts",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "account_management",
+    severity  = "critical",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Security Events - Process Creation
+// =============================================================================
+loki.source.windowsevent "process" {
+  eventlog_name = "Security"
+  xpath_query   = "Event[System[EventID=4688]]"
+  labels = {
+    job       = "windows_process",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "process_creation",
+    severity  = "medium",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Security Events - Persistence (Tasks, Services)
+// =============================================================================
+loki.source.windowsevent "persistence" {
+  eventlog_name = "Security"
+  xpath_query   = "Event[System[(EventID=4697 or EventID=4698 or EventID=4699 or EventID=4700 or EventID=4701 or EventID=4702)]]"
+  labels = {
+    job       = "windows_persistence",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "persistence",
+    severity  = "critical",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Security Events - Audit/Policy Changes
+// =============================================================================
+loki.source.windowsevent "policy" {
+  eventlog_name = "Security"
+  xpath_query   = "Event[System[(EventID=1100 or EventID=1102 or EventID=4703 or EventID=4704 or EventID=4705 or EventID=4719)]]"
+  labels = {
+    job       = "windows_policy",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "policy_changes",
+    severity  = "critical",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Security Events - Object Access (File Audit)
+// =============================================================================
+loki.source.windowsevent "object_access" {
+  eventlog_name = "Security"
+  xpath_query   = "Event[System[(EventID=4663 or EventID=4656 or EventID=4660 or EventID=4670 or EventID=5140 or EventID=5145)]]"
+  labels = {
+    job       = "windows_object_access",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "object_access",
+    severity  = "medium",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// System Events - Services
+// =============================================================================
+loki.source.windowsevent "services" {
+  eventlog_name = "System"
+  xpath_query   = "Event[System[(EventID=7045 or EventID=7040 or EventID=7034 or EventID=7036)]]"
+  labels = {
+    job       = "windows_services",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "services",
+    severity  = "high",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// PowerShell Script Block Logging
+// =============================================================================
+loki.source.windowsevent "powershell" {
+  eventlog_name = "Microsoft-Windows-PowerShell/Operational"
+  xpath_query   = "Event[System[(EventID=4103 or EventID=4104)]]"
+  labels = {
+    job       = "windows_powershell",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "powershell",
+    severity  = "critical",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Sysmon Events
+// =============================================================================
+loki.source.windowsevent "sysmon" {
+  eventlog_name = "Microsoft-Windows-Sysmon/Operational"
+  xpath_query   = "Event[System[(EventID=1 or EventID=3 or EventID=5 or EventID=7 or EventID=8 or EventID=10 or EventID=11 or EventID=12 or EventID=13 or EventID=15 or EventID=17 or EventID=18 or EventID=22 or EventID=23 or EventID=25)]]"
+  labels = {
+    job       = "windows_sysmon",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "sysmon",
+    severity  = "high",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Active Directory Events
+// =============================================================================
+loki.source.windowsevent "ad_ds" {
+  eventlog_name = "Directory Service"
+  xpath_query   = "Event[System[(Level=1 or Level=2 or Level=3)]]"
+  labels = {
+    job       = "windows_adds",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "directory_service",
+    severity  = "high",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// DNS Server Events
+// =============================================================================
+loki.source.windowsevent "dns" {
+  eventlog_name = "DNS Server"
+  xpath_query   = "Event[System[(Level=1 or Level=2 or Level=3 or EventID=541 or EventID=770)]]"
+  labels = {
+    job       = "windows_dns",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "dns",
+    severity  = "medium",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// DHCP Server Events
+// =============================================================================
+loki.source.windowsevent "dhcp" {
+  eventlog_name = "DhcpAdminEvents"
+  xpath_query   = "*"
+  labels = {
+    job       = "windows_dhcp",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "dhcp",
+    severity  = "medium",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// NPS (Network Policy Server / RADIUS) Events
+// =============================================================================
+loki.source.windowsevent "nps" {
+  eventlog_name = "Security"
+  xpath_query   = "Event[System[(EventID=6272 or EventID=6273 or EventID=6274 or EventID=6275 or EventID=6276 or EventID=6277 or EventID=6278 or EventID=6279 or EventID=6280)]]"
+  labels = {
+    job       = "windows_nps",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "nps",
+    severity  = "high",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Windows Defender Events
+// =============================================================================
+loki.source.windowsevent "defender" {
+  eventlog_name = "Microsoft-Windows-Windows Defender/Operational"
+  xpath_query   = "Event[System[(EventID=1006 or EventID=1007 or EventID=1008 or EventID=1009 or EventID=1116 or EventID=1117 or EventID=1118 or EventID=1119 or EventID=5001 or EventID=5007 or EventID=5010 or EventID=5012)]]"
+  labels = {
+    job       = "windows_defender",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "antivirus",
+    severity  = "high",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// RDP/Terminal Services
+// =============================================================================
+loki.source.windowsevent "rdp" {
+  eventlog_name = "Microsoft-Windows-TerminalServices-LocalSessionManager/Operational"
+  xpath_query   = "Event[System[(EventID=21 or EventID=22 or EventID=23 or EventID=24 or EventID=25)]]"
+  labels = {
+    job       = "windows_rdp",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "remote_access",
+    severity  = "high",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Windows Firewall Events
+// =============================================================================
+loki.source.windowsevent "firewall" {
+  eventlog_name = "Microsoft-Windows-Windows Firewall With Advanced Security/Firewall"
+  xpath_query   = "Event[System[(EventID=2003 or EventID=2004 or EventID=2005 or EventID=2006)]]"
+  labels = {
+    job       = "windows_firewall",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "firewall",
+    severity  = "medium",
+  }
+  forward_to = [loki.write.default.receiver]
+}

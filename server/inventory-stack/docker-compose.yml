@@ -2,6 +2,7 @@
 # Inventory Stack - Docker Compose
 # =============================================================================
 # Netdisco (мережева інвентаризація) + FleetDM (endpoints інвентаризація)
+# Stack 2025: MySQL 8.4 LTS, Redis 7.4, FleetDM 4.61
 # =============================================================================
 
 services:
@@ -102,11 +103,11 @@ services:
   # MySQL для FleetDM
   # ---------------------------------------------------------------------------
   fleet-mysql:
-    image: mysql:8.0
+    image: mysql:8.4
     container_name: fleet-mysql
     restart: unless-stopped
     command: >
-      --default-authentication-plugin=mysql_native_password
+      --mysql-native-password=ON
       --gtid-mode=ON
       --enforce-gtid-consistency=ON
     environment:
@@ -128,7 +129,7 @@ services:
   # Redis для FleetDM
   # ---------------------------------------------------------------------------
   fleet-redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     container_name: fleet-redis
     restart: unless-stopped
     healthcheck:
@@ -143,7 +144,7 @@ services:
   # FleetDM Server
   # ---------------------------------------------------------------------------
   fleet:
-    image: fleetdm/fleet:latest
+    image: fleetdm/fleet:v4.61.0
     container_name: fleet-server
     restart: unless-stopped
     depends_on:

@@ -2,6 +2,7 @@
 # Prometheus Configuration
 # =============================================================================
 # Cybersec Monitoring Stack
+# Prometheus 3.x compatible
 # =============================================================================
 
 global:
@@ -20,6 +21,7 @@ alerting:
         - targets:
           - alertmanager:9093
       timeout: 10s
+      api_version: v2  # Prometheus 3.x requires Alertmanager v2 API
 
 # =============================================================================
 # Rule files - правила для алертів
@@ -40,18 +42,6 @@ scrape_configs:
         labels:
           instance: 'prometheus'
           environment: 'monitoring'
-          critical: 'true'
-
-  # ---------------------------------------------------------------------------
-  # Monitoring Server - Node Exporter
-  # ---------------------------------------------------------------------------
-  - job_name: 'monitoring-server'
-    static_configs:
-      - targets: ['10.0.1.2:9100']
-        labels:
-          instance: 'monitoring-server'
-          environment: 'monitoring'
-          os: 'linux'
           critical: 'true'
 
   # ---------------------------------------------------------------------------
@@ -88,7 +78,7 @@ scrape_configs:
   # ---------------------------------------------------------------------------
   # Windows Endpoints - Windows Exporter
   # ---------------------------------------------------------------------------
-  - job_name: 'windows-server'
+  - job_name: 'windows'
     static_configs:
       - targets:
         - '10.0.1.3:9182'       # Windows Server 2025
@@ -98,9 +88,6 @@ scrape_configs:
           type: 'server'
           critical: 'true'
           hostname: 'win-server-2025'
-
-  - job_name: 'windows-clients'
-    static_configs:
       - targets:
         - '10.0.1.4:9182'       # Windows 11 Client
         labels:
@@ -111,15 +98,17 @@ scrape_configs:
 
   # ---------------------------------------------------------------------------
   # Linux Endpoints - Node Exporter
-  # Розкоментуйте та додайте ваші Linux машини
   # ---------------------------------------------------------------------------
-  # - job_name: 'linux-endpoints'
-  #   static_configs:
-  #     - targets:
-  #       - '10.0.1.x:9100'
-  #       labels:
-  #         environment: 'production'
-  #         os: 'linux'
+  - job_name: 'linux'
+    static_configs:
+      - targets:
+        - '10.0.1.2:9100'       # Monitoring Server
+        labels:
+          environment: 'monitoring'
+          os: 'linux'
+          type: 'server'
+          critical: 'true'
+          hostname: 'monitoring-server'
 
   # ---------------------------------------------------------------------------
   # File-based service discovery (альтернатива для динамічного списку)

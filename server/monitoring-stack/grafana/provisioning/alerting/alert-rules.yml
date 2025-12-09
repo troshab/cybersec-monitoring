@@ -122,7 +122,7 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="windows_system"} |= "7045" [5m])'
+              expr: 'count_over_time({job="windows_services"} |= "7045" [5m])'
               queryType: range
               refId: A
           - refId: B
@@ -173,7 +173,7 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="windows_object_access"} |= "4698" [5m])'
+              expr: 'count_over_time({job="windows_persistence"} |= "4698" [5m])'
               queryType: range
               refId: A
           - refId: B
@@ -318,3 +318,416 @@ groups:
           severity: high
           category: credential_access
           mitre_attack: T1110
+
+  # ===========================================================================
+  # Active Directory Security Alerts
+  # ===========================================================================
+  - orgId: 1
+    name: Active Directory Security
+    folder: Security Alerts
+    interval: 1m
+    rules:
+      # Alert: AD Object Modified (5136)
+      - uid: ad-object-modified-5136
+        title: "HIGH: AD Object Modified (5136)"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="windows_directory_service"} |= "5136" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "Active Directory object was modified"
+          description: "Event ID 5136 - Directory object modified. Check for unauthorized changes to AD objects, especially privileged groups."
+          runbook_url: "https://attack.mitre.org/techniques/T1484/"
+        labels:
+          severity: high
+          category: active_directory
+          mitre_attack: T1484
+
+      # Alert: AD Object Created (5137)
+      - uid: ad-object-created-5137
+        title: "MEDIUM: AD Object Created (5137)"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="windows_directory_service"} |= "5137" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "New Active Directory object created"
+          description: "Event ID 5137 - New directory object created. Verify this is authorized. Attackers create objects for persistence."
+        labels:
+          severity: medium
+          category: active_directory
+
+      # Alert: AD Object Deleted (5141)
+      - uid: ad-object-deleted-5141
+        title: "HIGH: AD Object Deleted (5141)"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="windows_directory_service"} |= "5141" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "Active Directory object deleted"
+          description: "Event ID 5141 - Directory object deleted. Unauthorized deletion could indicate sabotage or attack."
+        labels:
+          severity: high
+          category: active_directory
+
+  # ===========================================================================
+  # Linux Security Alerts
+  # ===========================================================================
+  - orgId: 1
+    name: Linux Security
+    folder: Security Alerts
+    interval: 1m
+    rules:
+      # Alert: Failed SSH Login Spike
+      - uid: linux-failed-ssh-spike
+        title: "HIGH: Linux Failed SSH Login Spike"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="auth"} |~ "Failed password|authentication failure" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [10]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "High number of failed SSH login attempts on Linux"
+          description: "More than 10 failed SSH logins in 5 minutes. Possible brute force attack. Check fail2ban status."
+          runbook_url: "https://attack.mitre.org/techniques/T1110/"
+        labels:
+          severity: high
+          category: credential_access
+          os: linux
+          mitre_attack: T1110
+
+      # Alert: Sudo to Root
+      - uid: linux-sudo-root
+        title: "MEDIUM: Linux Sudo Activity"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="auth"} |~ "sudo.*COMMAND" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [5]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "Multiple sudo commands executed"
+          description: "More than 5 sudo commands in 5 minutes. Normal for admins, suspicious for regular users."
+        labels:
+          severity: medium
+          category: privilege_escalation
+          os: linux
+
+      # Alert: User Created on Linux
+      - uid: linux-user-created
+        title: "HIGH: Linux User Created"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="auth"} |~ "useradd|adduser" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "New user created on Linux system"
+          description: "User creation detected. Verify this is authorized. Attackers create backdoor accounts."
+          runbook_url: "https://attack.mitre.org/techniques/T1136/"
+        labels:
+          severity: high
+          category: persistence
+          os: linux
+          mitre_attack: T1136.001
+
+      # Alert: Fail2ban Ban Event
+      - uid: linux-fail2ban-ban
+        title: "INFO: Fail2ban Banned IP"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="fail2ban"} |= "Ban" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "Fail2ban banned an IP address"
+          description: "Fail2ban detected and banned a malicious IP. This indicates an ongoing attack was blocked."
+        labels:
+          severity: info
+          category: defense
+          os: linux
+
+      # Alert: Cron Job Created
+      - uid: linux-cron-created
+        title: "MEDIUM: Linux Cron Job Modified"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="syslog"} |~ "CRON.*CMD|crontab" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "Cron job activity detected"
+          description: "Cron job execution or modification detected. Attackers use cron for persistence."
+          runbook_url: "https://attack.mitre.org/techniques/T1053/003/"
+        labels:
+          severity: medium
+          category: persistence
+          os: linux
+          mitre_attack: T1053.003

@@ -1,0 +1,201 @@
+// =============================================================================
+// Grafana Alloy Configuration - Linux Agent
+// =============================================================================
+// For Linux servers and workstations
+// Alloy 1.x (replaces deprecated Promtail)
+// =============================================================================
+
+// =============================================================================
+// Loki destination
+// =============================================================================
+loki.write "default" {
+  endpoint {
+    url = "http://10.0.1.2:3100/loki/api/v1/push"
+  }
+}
+
+// =============================================================================
+// Auth logs (SSH, sudo, su, login)
+// =============================================================================
+local.file_match "auth" {
+  path_targets = [{
+    __path__ = "/var/log/auth.log",
+    job      = "auth",
+    host     = env("HOSTNAME"),
+    os_type  = "linux",
+    category = "authentication",
+    severity = "high",
+  }]
+}
+
+loki.source.file "auth" {
+  targets    = local.file_match.auth.targets
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Syslog
+// =============================================================================
+local.file_match "syslog" {
+  path_targets = [{
+    __path__ = "/var/log/syslog",
+    job      = "syslog",
+    host     = env("HOSTNAME"),
+    os_type  = "linux",
+    category = "system",
+    severity = "medium",
+  }]
+}
+
+loki.source.file "syslog" {
+  targets    = local.file_match.syslog.targets
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Kernel logs
+// =============================================================================
+local.file_match "kern" {
+  path_targets = [{
+    __path__ = "/var/log/kern.log",
+    job      = "kern",
+    host     = env("HOSTNAME"),
+    os_type  = "linux",
+    category = "kernel",
+    severity = "high",
+  }]
+}
+
+loki.source.file "kern" {
+  targets    = local.file_match.kern.targets
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Audit logs (auditd)
+// =============================================================================
+local.file_match "audit" {
+  path_targets = [{
+    __path__ = "/var/log/audit/audit.log",
+    job      = "audit",
+    host     = env("HOSTNAME"),
+    os_type  = "linux",
+    category = "audit",
+    severity = "high",
+  }]
+}
+
+loki.source.file "audit" {
+  targets    = local.file_match.audit.targets
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Secure log (RHEL/CentOS)
+// =============================================================================
+local.file_match "secure" {
+  path_targets = [{
+    __path__ = "/var/log/secure",
+    job      = "secure",
+    host     = env("HOSTNAME"),
+    os_type  = "linux",
+    category = "authentication",
+    severity = "high",
+  }]
+}
+
+loki.source.file "secure" {
+  targets    = local.file_match.secure.targets
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Fail2ban logs
+// =============================================================================
+local.file_match "fail2ban" {
+  path_targets = [{
+    __path__ = "/var/log/fail2ban.log",
+    job      = "fail2ban",
+    host     = env("HOSTNAME"),
+    os_type  = "linux",
+    category = "security",
+    severity = "high",
+  }]
+}
+
+loki.source.file "fail2ban" {
+  targets    = local.file_match.fail2ban.targets
+  forward_to = [loki.process.fail2ban.receiver]
+}
+
+loki.process "fail2ban" {
+  stage.regex {
+    expression = ".*\\[(?P<jail>\\w+)\\].*(?P<action>Ban|Unban).*(?P<ip>\\d+\\.\\d+\\.\\d+\\.\\d+)"
+  }
+  stage.labels {
+    values = {
+      jail   = "",
+      action = "",
+      ip     = "",
+    }
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Apache/Nginx access logs (if exists)
+// =============================================================================
+local.file_match "webserver_access" {
+  path_targets = [
+    {
+      __path__ = "/var/log/apache2/access.log",
+      job      = "webserver_access",
+      host     = env("HOSTNAME"),
+      os_type  = "linux",
+      category = "webserver",
+      severity = "low",
+    },
+    {
+      __path__ = "/var/log/nginx/access.log",
+      job      = "webserver_access",
+      host     = env("HOSTNAME"),
+      os_type  = "linux",
+      category = "webserver",
+      severity = "low",
+    },
+  ]
+}
+
+loki.source.file "webserver_access" {
+  targets    = local.file_match.webserver_access.targets
+  forward_to = [loki.write.default.receiver]
+}
+
+// =============================================================================
+// Apache/Nginx error logs (if exists)
+// =============================================================================
+local.file_match "webserver_error" {
+  path_targets = [
+    {
+      __path__ = "/var/log/apache2/error.log",
+      job      = "webserver_error",
+      host     = env("HOSTNAME"),
+      os_type  = "linux",
+      category = "webserver",
+      severity = "high",
+    },
+    {
+      __path__ = "/var/log/nginx/error.log",
+      job      = "webserver_error",
+      host     = env("HOSTNAME"),
+      os_type  = "linux",
+      category = "webserver",
+      severity = "high",
+    },
+  ]
+}
+
+loki.source.file "webserver_error" {
+  targets    = local.file_match.webserver_error.targets
+  forward_to = [loki.write.default.receiver]
+}

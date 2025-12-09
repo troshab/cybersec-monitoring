@@ -5,12 +5,12 @@
 #
 # Підтримка:
 #   - Ubuntu 20.04+, 22.04+, 24.04
-#   - Debian 11+, 12
+#   - Debian 11+, 12, 13
 #   - RHEL/CentOS/Rocky 8+, 9
 #   - Kali Linux
 #
 # Компоненти:
-#   - Promtail (logs → Loki)
+#   - Grafana Alloy (logs → Loki) - replaces deprecated Promtail
 #   - Node Exporter (metrics → Prometheus)
 #   - Auditd (системний аудит)
 #   - Osquery (опціонально, для FleetDM)
@@ -57,13 +57,13 @@ banner() {
 LOKI_URL=""
 FLEET_URL=""
 FLEET_SECRET=""
-PROMTAIL_VERSION="2.9.3"
 NODE_EXPORTER_VERSION="1.7.0"
 OSQUERY_VERSION="5.12.1"
 SKIP_AUDITD=false
 SKIP_OSQUERY=false
 INSTALL_DIR="/opt/monitoring"
-CONFIG_DIR="/etc/monitoring"
+CONFIG_DIR="/etc/alloy"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # =============================================================================
 # Парсинг аргументів
@@ -80,7 +80,6 @@ Optional:
   --fleet-secret SECRET   FleetDM enrollment secret
   --skip-auditd           Пропустити налаштування auditd
   --skip-osquery          Пропустити встановлення osquery
-  --promtail-version VER  Версія Promtail (default: $PROMTAIL_VERSION)
   --node-exporter-version VER  Версія Node Exporter (default: $NODE_EXPORTER_VERSION)
   -h, --help              Показати цю довідку
 
@@ -113,10 +112,6 @@ while [[ $# -gt 0 ]]; do
         --skip-osquery)
             SKIP_OSQUERY=true
             shift
-            ;;
-        --promtail-version)
-            PROMTAIL_VERSION="$2"
-            shift 2
             ;;
         --node-exporter-version)
             NODE_EXPORTER_VERSION="$2"
@@ -172,7 +167,7 @@ install_dependencies() {
     case $DISTRO in
         ubuntu|debian|kali)
             apt-get update
-            apt-get install -y curl wget unzip jq auditd audispd-plugins
+            apt-get install -y curl wget unzip jq auditd audispd-plugins gpg apt-transport-https software-properties-common
             ;;
         rhel|centos|rocky|almalinux|fedora)
             if command -v dnf &> /dev/null; then
@@ -198,243 +193,134 @@ create_directories() {
     mkdir -p "$INSTALL_DIR"
     mkdir -p "$CONFIG_DIR"
     mkdir -p /var/log/monitoring
-    mkdir -p /var/lib/promtail
+    mkdir -p /var/lib/alloy
 
     log_success "Директорії створено"
 }
 
 # =============================================================================
-# Встановлення Promtail
+# Встановлення Grafana Alloy
 # =============================================================================
-install_promtail() {
-    banner "Встановлення Promtail v$PROMTAIL_VERSION"
+install_alloy() {
+    banner "Встановлення Grafana Alloy (замінює deprecated Promtail)"
 
-    local ARCH=$(uname -m)
-    case $ARCH in
-        x86_64)
-            ARCH="amd64"
+    case $DISTRO in
+        ubuntu|debian|kali)
+            log_info "Додавання Grafana репозиторію..."
+            mkdir -p /etc/apt/keyrings/
+            wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor > /etc/apt/keyrings/grafana.gpg
+            echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | tee /etc/apt/sources.list.d/grafana.list > /dev/null
+            apt-get update
+            apt-get install -y alloy
             ;;
-        aarch64)
-            ARCH="arm64"
+        rhel|centos|rocky|almalinux|fedora)
+            log_info "Додавання Grafana репозиторію..."
+            cat > /etc/yum.repos.d/grafana.repo << 'EOF'
+[grafana]
+name=grafana
+baseurl=https://rpm.grafana.com
+repo_gpgcheck=1
+enabled=1
+gpgcheck=1
+gpgkey=https://rpm.grafana.com/gpg.key
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+EOF
+            if command -v dnf &> /dev/null; then
+                dnf install -y alloy
+            else
+                yum install -y alloy
+            fi
             ;;
-        armv7l)
-            ARCH="arm"
+        *)
+            log_error "Автоматичне встановлення Alloy не підтримується для $DISTRO"
+            exit 1
             ;;
     esac
 
-    local PROMTAIL_URL="https://github.com/grafana/loki/releases/download/v${PROMTAIL_VERSION}/promtail-linux-${ARCH}.zip"
-
-    log_info "Завантаження Promtail..."
-    cd /tmp
-    wget -q "$PROMTAIL_URL" -O promtail.zip
-    unzip -o promtail.zip
-    mv "promtail-linux-$ARCH" "$INSTALL_DIR/promtail"
-    chmod +x "$INSTALL_DIR/promtail"
-    rm -f promtail.zip
-
-    log_success "Promtail завантажено"
+    log_success "Alloy встановлено"
 
     # Конфігурація
-    log_info "Створення конфігурації Promtail..."
+    log_info "Налаштування конфігурації Alloy..."
 
-    local HOSTNAME=$(hostname)
+    # Копіюємо конфіг якщо є, або використовуємо вбудований
+    if [ -f "$SCRIPT_DIR/config.alloy" ]; then
+        cp "$SCRIPT_DIR/config.alloy" "$CONFIG_DIR/config.alloy"
+        log_info "Використовується конфігурація з $SCRIPT_DIR/config.alloy"
+    else
+        # Створюємо базову конфігурацію
+        cat > "$CONFIG_DIR/config.alloy" << EOF
+// Grafana Alloy Configuration - Linux Agent
+// Generated: $(date)
 
-    cat > "$CONFIG_DIR/promtail.yml" << EOF
-# Promtail Configuration for Linux
-# Generated: $(date)
+loki.write "default" {
+  endpoint {
+    url = "${LOKI_URL}/loki/api/v1/push"
+  }
+}
 
-server:
-  http_listen_port: 9080
-  grpc_listen_port: 0
+local.file_match "auth" {
+  path_targets = [{
+    __path__ = "/var/log/auth.log",
+    job      = "linux_auth",
+    host     = env("HOSTNAME"),
+    os_type  = "linux",
+  }]
+}
 
-positions:
-  filename: /var/lib/promtail/positions.yaml
+loki.source.file "auth" {
+  targets    = local.file_match.auth.targets
+  forward_to = [loki.write.default.receiver]
+}
 
-clients:
-  - url: ${LOKI_URL}/loki/api/v1/push
-    batchwait: 1s
-    batchsize: 1048576
+local.file_match "syslog" {
+  path_targets = [{
+    __path__ = "/var/log/syslog",
+    job      = "linux_syslog",
+    host     = env("HOSTNAME"),
+    os_type  = "linux",
+  }]
+}
 
-scrape_configs:
-  # Syslog
-  - job_name: syslog
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: syslog
-          host: ${HOSTNAME}
-          __path__: /var/log/syslog
-    pipeline_stages:
-      - regex:
-          expression: '^(?P<timestamp>\w+\s+\d+\s+\d+:\d+:\d+)\s+(?P<hostname>\S+)\s+(?P<process>\S+):\s+(?P<message>.*)$'
-      - labels:
-          process:
+loki.source.file "syslog" {
+  targets    = local.file_match.syslog.targets
+  forward_to = [loki.write.default.receiver]
+}
 
-  # Auth log
-  - job_name: auth
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: auth
-          host: ${HOSTNAME}
-          category: authentication
-          severity: high
-          __path__: /var/log/auth.log
-    pipeline_stages:
-      - regex:
-          expression: '(?i)(failed|invalid|error|denied|attack)'
-      - labels:
-          severity: high
+local.file_match "audit" {
+  path_targets = [{
+    __path__ = "/var/log/audit/audit.log",
+    job      = "linux_audit",
+    host     = env("HOSTNAME"),
+    os_type  = "linux",
+  }]
+}
 
-  # Secure log (RHEL/CentOS)
-  - job_name: secure
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: secure
-          host: ${HOSTNAME}
-          category: authentication
-          __path__: /var/log/secure
+loki.source.file "audit" {
+  targets    = local.file_match.audit.targets
+  forward_to = [loki.write.default.receiver]
+}
+EOF
+    fi
 
-  # Audit log
-  - job_name: audit
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: audit
-          host: ${HOSTNAME}
-          category: audit
-          severity: high
-          __path__: /var/log/audit/audit.log
-    pipeline_stages:
-      - regex:
-          expression: 'type=(?P<audit_type>\w+)'
-      - labels:
-          audit_type:
+    # Оновлюємо Loki URL в конфігурації
+    sed -i "s|url = \"http://[^\"]*\"|url = \"${LOKI_URL}/loki/api/v1/push\"|g" "$CONFIG_DIR/config.alloy"
 
-  # Kernel messages
-  - job_name: kern
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: kern
-          host: ${HOSTNAME}
-          category: kernel
-          __path__: /var/log/kern.log
-
-  # Dpkg/apt (Debian/Ubuntu)
-  - job_name: dpkg
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: dpkg
-          host: ${HOSTNAME}
-          category: packages
-          __path__: /var/log/dpkg.log
-
-  # DNF/YUM (RHEL/CentOS)
-  - job_name: dnf
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: dnf
-          host: ${HOSTNAME}
-          category: packages
-          __path__: /var/log/dnf.log
-
-  # SSH daemon
-  - job_name: sshd
-    journal:
-      labels:
-        job: sshd
-        host: ${HOSTNAME}
-        category: ssh
-        severity: high
-      path: /var/log/journal
-    relabel_configs:
-      - source_labels: ['__journal__systemd_unit']
-        regex: 'sshd.service'
-        action: keep
-
-  # Sudo commands
-  - job_name: sudo
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: sudo
-          host: ${HOSTNAME}
-          category: privilege_escalation
-          severity: critical
-          __path__: /var/log/auth.log
-    pipeline_stages:
-      - match:
-          selector: '{job="sudo"}'
-          stages:
-            - regex:
-                expression: 'sudo:'
-                source: filename
-
-  # Cron
-  - job_name: cron
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: cron
-          host: ${HOSTNAME}
-          category: scheduled_tasks
-          __path__: /var/log/cron.log
-
-  # Journal (systemd)
-  - job_name: journal
-    journal:
-      labels:
-        job: journal
-        host: ${HOSTNAME}
-      path: /var/log/journal
-    relabel_configs:
-      - source_labels: ['__journal_priority']
-        target_label: 'priority'
-      - source_labels: ['__journal__systemd_unit']
-        target_label: 'unit'
+    # Environment config
+    cat > /etc/default/alloy << 'EOF'
+# Grafana Alloy configuration
+ALLOY_CONFIG_FILE=/etc/alloy/config.alloy
+ALLOY_STABILITY_LEVEL=generally-available
 EOF
 
-    log_success "Конфігурація Promtail створена"
-
-    # Systemd service
-    log_info "Створення systemd сервісу..."
-
-    cat > /etc/systemd/system/promtail.service << EOF
-[Unit]
-Description=Promtail Log Agent
-Documentation=https://grafana.com/docs/loki/latest/clients/promtail/
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=root
-ExecStart=${INSTALL_DIR}/promtail -config.file=${CONFIG_DIR}/promtail.yml
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
+    # Права для читання логів
+    usermod -a -G adm alloy 2>/dev/null || true
 
     systemctl daemon-reload
-    systemctl enable promtail
-    systemctl start promtail
+    systemctl enable alloy
+    systemctl start alloy
 
-    log_success "Promtail встановлено та запущено"
+    log_success "Grafana Alloy налаштовано та запущено"
 }
 
 # =============================================================================
@@ -518,128 +404,42 @@ configure_auditd() {
 # Security Audit Rules for Linux
 # Generated by install-agent.sh
 
-# Remove any existing rules
 -D
-
-# Buffer Size
 -b 8192
-
-# Failure Mode
 -f 1
 
-# =============================================================================
-# Authentication & Authorization
-# =============================================================================
-# Login/logout events
+# Authentication
 -w /var/log/lastlog -p wa -k logins
--w /var/run/faillock/ -p wa -k logins
--w /var/log/tallylog -p wa -k logins
-
-# Password changes
 -w /etc/passwd -p wa -k identity
 -w /etc/group -p wa -k identity
--w /etc/gshadow -p wa -k identity
 -w /etc/shadow -p wa -k identity
--w /etc/security/opasswd -p wa -k identity
-
-# Sudoers
 -w /etc/sudoers -p wa -k sudoers
 -w /etc/sudoers.d/ -p wa -k sudoers
-
-# PAM configuration
--w /etc/pam.d/ -p wa -k pam
-
-# SSH configuration
 -w /etc/ssh/sshd_config -p wa -k sshd
--w /etc/ssh/sshd_config.d/ -p wa -k sshd
 
-# =============================================================================
-# Privileged Commands
-# =============================================================================
+# Privileged commands
 -a always,exit -F path=/usr/bin/sudo -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged
 -a always,exit -F path=/usr/bin/su -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged
--a always,exit -F path=/usr/bin/chsh -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged
--a always,exit -F path=/usr/bin/chfn -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged
--a always,exit -F path=/usr/bin/passwd -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged
--a always,exit -F path=/usr/bin/gpasswd -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged
--a always,exit -F path=/usr/bin/newgrp -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged
--a always,exit -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged
--a always,exit -F path=/usr/sbin/useradd -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged
--a always,exit -F path=/usr/sbin/userdel -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged
--a always,exit -F path=/usr/sbin/groupadd -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged
--a always,exit -F path=/usr/sbin/groupdel -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged
 
-# =============================================================================
-# Network Configuration
-# =============================================================================
--w /etc/hosts -p wa -k network
--w /etc/network/ -p wa -k network
--w /etc/sysconfig/network -p wa -k network
--w /etc/sysconfig/network-scripts/ -p wa -k network
--w /etc/netplan/ -p wa -k network
--a always,exit -F arch=b64 -S sethostname -S setdomainname -k network
-
-# =============================================================================
-# Systemd & Services
-# =============================================================================
--w /etc/systemd/ -p wa -k systemd
--w /usr/lib/systemd/ -p wa -k systemd
--w /etc/init.d/ -p wa -k init
--w /etc/rc.local -p wa -k init
-
-# =============================================================================
-# Cron Jobs (Persistence)
-# =============================================================================
+# Persistence
 -w /etc/cron.d/ -p wa -k cron
--w /etc/cron.daily/ -p wa -k cron
--w /etc/cron.hourly/ -p wa -k cron
--w /etc/cron.monthly/ -p wa -k cron
--w /etc/cron.weekly/ -p wa -k cron
 -w /etc/crontab -p wa -k cron
 -w /var/spool/cron/ -p wa -k cron
+-w /etc/systemd/ -p wa -k systemd
 
-# =============================================================================
-# Kernel Modules (Rootkit detection)
-# =============================================================================
+# Kernel modules
 -w /sbin/insmod -p x -k modules
 -w /sbin/rmmod -p x -k modules
 -w /sbin/modprobe -p x -k modules
--a always,exit -F arch=b64 -S init_module -S delete_module -k modules
 
-# =============================================================================
-# Time Changes
-# =============================================================================
+# Time changes
 -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change
--a always,exit -F arch=b64 -S clock_settime -k time-change
--w /etc/localtime -p wa -k time-change
 
-# =============================================================================
-# Process Execution (Suspicious)
-# =============================================================================
--a always,exit -F arch=b64 -S execve -F auid>=1000 -F auid!=4294967295 -F key=exec
--a always,exit -F arch=b64 -S execve -F euid=0 -F key=exec_root
-
-# =============================================================================
-# File Deletion
-# =============================================================================
--a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete
-
-# =============================================================================
-# Audit Configuration (Tampering)
-# =============================================================================
+# Audit logs protection
 -w /var/log/audit/ -p wa -k audit_logs
 -w /etc/audit/ -p wa -k audit_config
--w /etc/libaudit.conf -p wa -k audit_config
--w /etc/audisp/ -p wa -k audit_config
-
-# Make config immutable (uncomment in production)
-# -e 2
 EOF
 
-    # Перезавантаження auditd
-    log_info "Перезавантаження auditd..."
-
-    # auditctl -R /etc/audit/rules.d/security.rules
     service auditd restart 2>/dev/null || systemctl restart auditd
 
     log_success "Auditd налаштовано"
@@ -659,11 +459,10 @@ install_osquery() {
         return
     fi
 
-    banner "Встановлення Osquery v$OSQUERY_VERSION"
+    banner "Встановлення Osquery"
 
     case $DISTRO in
         ubuntu|debian|kali)
-            log_info "Встановлення osquery для Debian/Ubuntu..."
             export OSQUERY_KEY=1484120AC4E9F8A1A577AEEE97A80C63C9D8B80B
             apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $OSQUERY_KEY
             add-apt-repository 'deb [arch=amd64] https://pkg.osquery.io/deb deb main'
@@ -671,10 +470,8 @@ install_osquery() {
             apt-get install -y osquery
             ;;
         rhel|centos|rocky|almalinux|fedora)
-            log_info "Встановлення osquery для RHEL..."
             curl -L https://pkg.osquery.io/rpm/GPG | tee /etc/pki/rpm-gpg/RPM-GPG-KEY-osquery
             yum-config-manager --add-repo https://pkg.osquery.io/rpm/osquery-s3-rpm.repo
-            yum-config-manager --enable osquery-s3-rpm-repo
             yum install -y osquery
             ;;
         *)
@@ -683,15 +480,9 @@ install_osquery() {
             ;;
     esac
 
-    # Конфігурація для FleetDM
-    log_info "Налаштування osquery для FleetDM..."
-
     mkdir -p /etc/osquery
-
-    # Enroll secret
     echo "$FLEET_SECRET" > /etc/osquery/enroll_secret
 
-    # Osquery flags
     cat > /etc/osquery/osquery.flags << EOF
 --tls_hostname=${FLEET_URL#*://}
 --tls_server_certs=/etc/osquery/fleet.crt
@@ -704,19 +495,14 @@ install_osquery() {
 --disable_distributed=false
 --distributed_plugin=tls
 --distributed_interval=10
---distributed_tls_max_attempts=3
 --distributed_tls_read_endpoint=/api/osquery/distributed/read
 --distributed_tls_write_endpoint=/api/osquery/distributed/write
 --logger_plugin=tls
 --logger_tls_endpoint=/api/osquery/log
---logger_tls_period=10
 EOF
 
-    # Спроба отримати сертифікат
-    log_info "Отримання TLS сертифіката FleetDM..."
     local FLEET_HOST="${FLEET_URL#*://}"
     FLEET_HOST="${FLEET_HOST%%/*}"
-
     openssl s_client -connect "$FLEET_HOST" < /dev/null 2>/dev/null | openssl x509 > /etc/osquery/fleet.crt 2>/dev/null || true
 
     systemctl enable osqueryd
@@ -731,18 +517,17 @@ EOF
 configure_firewall() {
     banner "Налаштування Firewall"
 
-    # Node Exporter port
     if command -v ufw &> /dev/null; then
         log_info "Налаштування UFW..."
         ufw allow from any to any port 9100 proto tcp comment "Node Exporter"
-        ufw allow from any to any port 9080 proto tcp comment "Promtail"
+        ufw allow from any to any port 12345 proto tcp comment "Alloy UI"
     elif command -v firewall-cmd &> /dev/null; then
         log_info "Налаштування firewalld..."
         firewall-cmd --permanent --add-port=9100/tcp
-        firewall-cmd --permanent --add-port=9080/tcp
+        firewall-cmd --permanent --add-port=12345/tcp
         firewall-cmd --reload
     else
-        log_warning "Firewall не знайдено, налаштуйте вручну"
+        log_warning "Firewall не знайдено"
     fi
 
     log_success "Firewall налаштовано"
@@ -758,7 +543,7 @@ check_status() {
     echo "Services:"
     echo "========="
 
-    for service in promtail node_exporter auditd osqueryd; do
+    for service in alloy node_exporter auditd osqueryd; do
         if systemctl is-active --quiet $service 2>/dev/null; then
             echo -e "  $service: ${GREEN}Running${NC}"
         else
@@ -769,7 +554,7 @@ check_status() {
     echo ""
     echo "Ports:"
     echo "======"
-    ss -tlnp | grep -E "9080|9100" || echo "  No monitoring ports detected"
+    ss -tlnp | grep -E "12345|9100" || echo "  No monitoring ports detected"
 
     echo ""
 }
@@ -782,18 +567,18 @@ print_summary() {
 
     cat << EOF
 Встановлені компоненти:
-  - Promtail: ${INSTALL_DIR}/promtail
+  - Grafana Alloy: /usr/bin/alloy
   - Node Exporter: ${INSTALL_DIR}/node_exporter
   - Auditd: $(if [ "$SKIP_AUDITD" = true ]; then echo "Skipped"; else echo "Configured"; fi)
   - Osquery: $(if [ "$SKIP_OSQUERY" = true ] || [ -z "$FLEET_URL" ]; then echo "Skipped"; else echo "Configured"; fi)
 
 Конфігурація:
-  - Promtail: ${CONFIG_DIR}/promtail.yml
+  - Alloy: ${CONFIG_DIR}/config.alloy
   - Audit rules: /etc/audit/rules.d/security.rules
 
 Порти:
   - Node Exporter: 9100
-  - Promtail: 9080
+  - Alloy UI: 12345
 
 Перевірка в Grafana:
   1. Відкрийте http://<monitoring-server>:3000
@@ -801,10 +586,9 @@ print_summary() {
   3. Запит: {host="$(hostname)"}
 
 Команди управління:
-  systemctl status promtail
+  systemctl status alloy
   systemctl status node_exporter
   systemctl status auditd
-  ausearch -k logins -ts recent
 
 EOF
 }
@@ -831,7 +615,7 @@ main() {
     detect_distro
     install_dependencies
     create_directories
-    install_promtail
+    install_alloy
     install_node_exporter
     configure_auditd
     install_osquery

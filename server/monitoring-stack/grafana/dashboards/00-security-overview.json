@@ -274,7 +274,7 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({job=\"windows_system\"} |= \"7045\" [24h])",
+          "expr": "count_over_time({job=\"windows_services\"} |= \"7045\" [24h])",
           "refId": "A"
         }
       ],
