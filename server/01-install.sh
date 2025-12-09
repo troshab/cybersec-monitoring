@@ -397,6 +397,27 @@ deploy_inventory_stack() {
     docker compose up -d
 
     log_success "Inventory Stack запущено"
+
+    # -------------------------------------------------------------------------
+    # FleetDM Setup - отримання Enroll Secret
+    # -------------------------------------------------------------------------
+    log_info "Очікування запуску FleetDM..."
+    sleep 15
+
+    echo ""
+    echo -e "${YELLOW}============================================================${NC}"
+    echo -e "${YELLOW}  FleetDM потребує початкового налаштування${NC}"
+    echo -e "${YELLOW}============================================================${NC}"
+    echo ""
+    echo "  1. Відкрийте браузер: https://${MONITORING_SERVER_IP}:${FLEET_PORT:-8080}"
+    echo "  2. Завершіть Setup Wizard (створіть адміна)"
+    echo "  3. Перейдіть: Settings → Organization settings → Enroll secret"
+    echo "  4. Скопіюйте Enroll Secret"
+    echo "  5. Оновіть FLEET_ENROLL_SECRET в $ENV_FILE"
+    echo ""
+    echo -e "${CYAN}Цей secret потрібен для підключення osquery агентів на клієнтах.${NC}"
+    echo ""
+    read -p "Натисніть Enter коли завершите налаштування FleetDM... "
 }
 
 install_promtail() {

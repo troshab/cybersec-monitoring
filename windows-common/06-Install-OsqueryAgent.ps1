@@ -37,7 +37,10 @@ param(
 
     [string]$CertPath,
 
-    [string]$OsqueryVersion = "5.12.1"
+    [string]$OsqueryVersion = "5.12.1",
+
+    # Використовувати для self-signed сертифікатів (lab/training environment)
+    [switch]$Insecure
 )
 
 $ErrorActionPreference = "Stop"
@@ -150,6 +153,7 @@ if ($CertPath -and (Test-Path $CertPath)) {
     } catch {
         Write-Log "Не вдалося отримати сертифікат: $_" -Level Warning
         Write-Log "Вкажіть шлях до сертифіката через -CertPath" -Level Warning
+        Write-Log "Або використайте -Insecure для self-signed сертифікатів" -Level Warning
     }
 }
 
@@ -162,9 +166,10 @@ Write-Log "Створення конфігурації..." -Level Info
 $EnrollSecret | Out-File -FilePath "$installDir\enroll_secret" -Encoding ASCII -NoNewline
 
 # Flags file
+$tlsCertsFlag = if ($Insecure) { "" } else { "--tls_server_certs=$certFile" }
 $flagsContent = @"
 --tls_hostname=$fleetHostname`:$fleetPort
---tls_server_certs=$certFile
+$tlsCertsFlag
 --enroll_secret_path=$installDir\enroll_secret
 --host_identifier=hostname
 --enroll_tls_endpoint=/api/osquery/enroll
