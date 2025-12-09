@@ -30,6 +30,7 @@ logs/
 
 # Docker data volumes
 **/pgdata/
+**/postgresql/
 **/mysql-data/
 **/grafana-data/
 **/prometheus-data/
