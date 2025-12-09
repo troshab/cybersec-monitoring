@@ -5,29 +5,39 @@
 # Stack 2025: MySQL 8.4 LTS, Redis 7.4, FleetDM 4.61
 # =============================================================================
 
+# Netdisco common environment variables
+x-netdisco-env: &netdisco-env
+  NETDISCO_DOMAIN: 'lab.local'
+  NETDISCO_DB_HOST: netdisco-postgresql
+  NETDISCO_DB_USER: netdisco
+  NETDISCO_DB_PASS: ${NETDISCO_DB_PASSWORD:-netdisco_secure_password}
+  NETDISCO_RO_COMMUNITY: ${SNMP_COMMUNITY:-public}
+  NETDISCO_CURRENT_PG_VERSION: '18'
+
 services:
   # ===========================================================================
   # NETDISCO - Автоматична інвентаризація мережі
   # ===========================================================================
 
   # ---------------------------------------------------------------------------
-  # PostgreSQL для Netdisco
+  # PostgreSQL для Netdisco (офіційний образ netdisco)
   # ---------------------------------------------------------------------------
   netdisco-postgresql:
     image: netdisco/netdisco:latest-postgresql
-    container_name: netdisco-db
+    container_name: netdisco-postgresql
+    hostname: netdisco-postgresql
     restart: unless-stopped
+    shm_size: 128mb
     volumes:
-      - ./netdisco/pgdata:/var/lib/postgresql/data
+      - ./netdisco/postgresql:/var/lib/postgresql
     environment:
-      POSTGRES_DB: netdisco
-      POSTGRES_USER: netdisco
-      POSTGRES_PASSWORD: ${NETDISCO_DB_PASSWORD:-netdisco_secure_password}
+      <<: *netdisco-env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U netdisco"]
+      test: ["CMD-SHELL", "pg_isready -U netdisco -d netdisco || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
     networks:
       - inventory
 
@@ -35,17 +45,21 @@ services:
   # Ініціалізація бази даних Netdisco
   # ---------------------------------------------------------------------------
   netdisco-db-init:
-    image: netdisco/netdisco:latest-do
-    container_name: netdisco-init
+    image: netdisco/netdisco:latest-backend
+    container_name: netdisco-db-init
     entrypoint: ''
-    command: "/home/netdisco/bin/netdisco-env /home/netdisco/bin/netdisco-db-deploy"
+    command: "/home/netdisco/bin/netdisco-env /home/netdisco/bin/netdisco-updatedb.sh"
+    user: postgres
     depends_on:
       netdisco-postgresql:
         condition: service_healthy
+    volumes:
+      - ./netdisco/postgresql:/var/lib/pgversions/new
+      - ./netdisco/config:/home/netdisco/environments
     environment:
-      NETDISCO_DB_HOST: netdisco-postgresql
-      NETDISCO_DB_USER: netdisco
-      NETDISCO_DB_PASS: ${NETDISCO_DB_PASSWORD:-netdisco_secure_password}
+      <<: *netdisco-env
+      DEPLOY_ADMIN_USER: 'YES'
+      NETDISCO_ADMIN_USER: ${GRAFANA_ADMIN_USER:-monadmin}
     networks:
       - inventory
 
@@ -57,17 +71,23 @@ services:
     container_name: netdisco-backend
     hostname: netdisco-backend
     restart: unless-stopped
+    init: true
     depends_on:
       netdisco-db-init:
         condition: service_completed_successfully
     volumes:
+      - ./netdisco/nd-site-local:/home/netdisco/nd-site-local
       - ./netdisco/config:/home/netdisco/environments
       - ./netdisco/logs:/home/netdisco/logs
-      - ./netdisco/nd-site-local:/home/netdisco/nd-site-local
     environment:
-      NETDISCO_DB_HOST: netdisco-postgresql
-      NETDISCO_DB_USER: netdisco
-      NETDISCO_DB_PASS: ${NETDISCO_DB_PASSWORD:-netdisco_secure_password}
+      <<: *netdisco-env
+    dns_opt:
+      - 'ndots:0'
+      - 'timeout:1'
+      - 'retries:0'
+      - 'attempts:1'
+      - edns0
+      - trustad
     networks:
       - inventory
 
@@ -79,19 +99,26 @@ services:
     container_name: netdisco-web
     hostname: netdisco-web
     restart: unless-stopped
+    init: true
     depends_on:
       netdisco-db-init:
         condition: service_completed_successfully
     ports:
       - "${NETDISCO_PORT:-5000}:5000"
     volumes:
+      - ./netdisco/nd-site-local:/home/netdisco/nd-site-local
       - ./netdisco/config:/home/netdisco/environments
       - ./netdisco/logs:/home/netdisco/logs
-      - ./netdisco/nd-site-local:/home/netdisco/nd-site-local
     environment:
-      NETDISCO_DB_HOST: netdisco-postgresql
-      NETDISCO_DB_USER: netdisco
-      NETDISCO_DB_PASS: ${NETDISCO_DB_PASSWORD:-netdisco_secure_password}
+      <<: *netdisco-env
+      IPV: '4'
+    dns_opt:
+      - 'ndots:0'
+      - 'timeout:1'
+      - 'retries:0'
+      - 'attempts:1'
+      - edns0
+      - trustad
     networks:
       - inventory
 
