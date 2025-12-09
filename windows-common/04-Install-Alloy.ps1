@@ -253,5 +253,5 @@ Write-Host "  Get-Service Alloy                    # Статус"
 Write-Host "  Restart-Service Alloy                # Перезапуск"
 Write-Host "  Get-Content '$dataDir\config.alloy'  # Конфігурація"
 Write-Host ""
-Write-Host "Логи: Event Viewer → Application → Alloy" -ForegroundColor Yellow
+Write-Host "Логи: Event Viewer -> Application -> Alloy" -ForegroundColor Yellow
 Write-Host ""
