@@ -99,7 +99,7 @@ git clone https://github.com/your-org/cybersec-monitoring.git
 cd cybersec-monitoring
 
 # Копіювання та налаштування конфігурації
-cp .env.example .env
+# .env вже налаштовано для lab environment
 nano .env  # Змініть всі паролі!
 ```
 
@@ -130,11 +130,17 @@ sudo ./server/01-install.sh
 2. Логін: admin / (пароль з .env)
 3. Перевірте дашборд "Security Overview"
 
+> **Примітка щодо FleetDM:** Для lab environment використовуються self-signed сертифікати. 
+> При встановленні osquery агентів використовуйте прапорець `-Insecure`:
+> ```powershell
+> .\Deploy-Client.ps1 -LokiUrl "http://10.0.1.2:3100" -FleetUrl "https://10.0.1.2:8080" -FleetEnrollSecret "..." -Insecure
+> ```
+
 ## Структура проєкту
 
 ```
 cybersec-monitoring/
-├── .env.example              # Шаблон змінних
+├── .env                      # Конфігурація середовища
 ├── README.md                 # Документація
 ├── LICENSE                   # Ліцензія MIT
 │
