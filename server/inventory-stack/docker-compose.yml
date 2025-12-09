@@ -116,6 +116,8 @@ services:
       IPV: '4'
       # Tell Dancer to load deployment.yml config
       DANCER_ENVIRONMENT: deployment
+      # Dancer::Session::Cookie requires this setting directly
+      DANCER_SESSION_COOKIE_KEY: ${NETDISCO_SESSION_KEY:-8809574a7064889d9e7baf92454f8198}
     dns_opt:
       - 'ndots:0'
       - 'timeout:1'
