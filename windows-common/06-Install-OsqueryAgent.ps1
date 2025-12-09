@@ -71,7 +71,7 @@ $fleetHostname = $fleetUri.Host
 $fleetPort = if ($fleetUri.Port -gt 0) { $fleetUri.Port } else { 8080 }
 
 # =============================================================================
-# Перевірка існуючої установки
+# Verification існуючої установки
 # =============================================================================
 $existingService = Get-Service -Name "osqueryd" -ErrorAction SilentlyContinue
 
@@ -99,7 +99,7 @@ try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-WebRequest -Uri $downloadUrl -OutFile $msiFile -UseBasicParsing
 } catch {
-    Write-Log "Помилка завантаження: $_" -Level Error
+    Write-Log "Download error: $_" -Level Error
     exit 1
 }
 
@@ -114,7 +114,7 @@ $msiArgs = @("/i", $msiFile, "/qn")
 $process = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -PassThru -NoNewWindow
 
 if ($process.ExitCode -ne 0) {
-    Write-Log "Помилка встановлення MSI (код: $($process.ExitCode))" -Level Error
+    Write-Log "Installation error MSI (code: $($process.ExitCode))" -Level Error
     exit 1
 }
 
@@ -236,7 +236,7 @@ try {
 }
 
 # =============================================================================
-# Очистка
+# Cleanup
 # =============================================================================
 Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
 
@@ -249,7 +249,7 @@ Write-Host "Деталі:" -ForegroundColor Cyan
 Write-Host "  FleetDM: $FleetUrl"
 Write-Host "  Install Dir: $installDir"
 Write-Host ""
-Write-Host "Перевірка:" -ForegroundColor Cyan
+Write-Host "Verification:" -ForegroundColor Cyan
 Write-Host "  1. Відкрийте FleetDM: $FleetUrl"
 Write-Host "  2. Перейдіть в Hosts"
 Write-Host "  3. Цей комп'ютер повинен з'явитись протягом хвилини"

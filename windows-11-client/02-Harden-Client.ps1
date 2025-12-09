@@ -1,21 +1,21 @@
 ﻿<#
 .SYNOPSIS
-    Базове захищення (hardening) Windows 11 клієнта.
+    Basic protection (hardening) Windows 11 client.
 
 .DESCRIPTION
-    Застосовує базові налаштування безпеки для Windows 11:
-    - Налаштування Windows Firewall
-    - Вимкнення небезпечних служб
-    - Налаштування SMB
-    - Захист від pass-the-hash
-    - Блокування LLMNR/NetBIOS
+    Applies basic security settings for Windows 11:
+    - Configuring Windows Firewall
+    - Disabling dangerous services
+    - Configuring SMB
+    - Pass-the-hash protection
+    - Blocking LLMNR/NetBIOS
 
 .EXAMPLE
     .\02-Harden-Client.ps1
 
 .NOTES
-    Запускати від адміністратора
-    Перед застосуванням переконайтесь, що не порушить роботу додатків
+    Run as administrator
+    Before applying, make sure it will not break applications
 #>
 
 #Requires -RunAsAdministrator
@@ -49,24 +49,24 @@ Write-Host ""
 # Windows Firewall
 # =============================================================================
 if (-not $SkipFirewall) {
-    Write-Log "Налаштування Windows Firewall..." -Level Info
+    Write-Log "Configuring Windows Firewall..." -Level Info
 
-    # Включення Firewall для всіх профілів
+    # Enabling Firewall for all profiles
     Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True
 
-    # Заборона вхідних з'єднань за замовчуванням
+    # Blocking incoming connections by default
     Set-NetFirewallProfile -Profile Domain,Public,Private -DefaultInboundAction Block
     Set-NetFirewallProfile -Profile Public -DefaultOutboundAction Allow
 
-    # Включення логування
+    # Enabling logging
     Set-NetFirewallProfile -Profile Domain,Public,Private -LogAllowed True -LogBlocked True
     Set-NetFirewallProfile -Profile Domain,Public,Private -LogFileName "%SystemRoot%\System32\LogFiles\Firewall\pfirewall.log"
     Set-NetFirewallProfile -Profile Domain,Public,Private -LogMaxSizeKilobytes 16384
 
-    Write-Log "Windows Firewall налаштовано" -Level Success
+    Write-Log "Windows Firewall configured" -Level Success
 
-    # Блокування NetBIOS через Firewall
-    Write-Log "Блокування NetBIOS..." -Level Info
+    # Blocking NetBIOS via Firewall
+    Write-Log "Blocking NetBIOS..." -Level Info
 
     $netbiosRules = @(
         @{Name = "Block NetBIOS-NS UDP 137"; Protocol = "UDP"; LocalPort = 137},
@@ -84,15 +84,15 @@ if (-not $SkipFirewall) {
             -Profile Domain,Private,Public | Out-Null
     }
 
-    Write-Log "NetBIOS заблоковано" -Level Success
+    Write-Log "NetBIOS blocked" -Level Success
 } else {
-    Write-Log "Firewall пропущено (-SkipFirewall)" -Level Warning
+    Write-Log "Firewall skipped (-SkipFirewall)" -Level Warning
 }
 
 # =============================================================================
-# Вимкнення небезпечних служб
+# Disabling dangerous services
 # =============================================================================
-Write-Log "Вимкнення небезпечних служб..." -Level Info
+Write-Log "Disabling dangerous services..." -Level Info
 
 $dangerousServices = @(
     @{Name = "RemoteRegistry"; DisplayName = "Remote Registry"},
@@ -112,7 +112,7 @@ foreach ($svc in $dangerousServices) {
         if ($service) {
             Stop-Service -Name $svc.Name -Force -ErrorAction SilentlyContinue
             Set-Service -Name $svc.Name -StartupType Disabled -ErrorAction SilentlyContinue
-            Write-Log "Вимкнено: $($svc.DisplayName)" -Level Success
+            Write-Log "Disabled: $($svc.DisplayName)" -Level Success
         }
     } catch {
         # Service might not exist
@@ -123,41 +123,41 @@ foreach ($svc in $dangerousServices) {
 # SMB Hardening
 # =============================================================================
 if (-not $SkipSMB) {
-    Write-Log "Налаштування SMB..." -Level Info
+    Write-Log "Configuring SMB..." -Level Info
 
-    # Вимкнення SMBv1 (застарілий, вразливий)
+    # Disabling SMBv1 (deprecated, vulnerable)
     try {
         Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force
         Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart -ErrorAction SilentlyContinue
-        Write-Log "SMBv1 вимкнено" -Level Success
+        Write-Log "SMBv1 disabled" -Level Success
     } catch {
-        Write-Log "SMBv1 вже вимкнено або недоступний" -Level Warning
+        Write-Log "SMBv1 already disabled or unavailable" -Level Warning
     }
 
-    # SMB підпис (захист від relay атак)
+    # SMB signing (relay attack protection)
     try {
         Set-SmbServerConfiguration -RequireSecuritySignature $true -Force
         Set-SmbClientConfiguration -RequireSecuritySignature $true -Force
-        Write-Log "SMB підпис увімкнено" -Level Success
+        Write-Log "SMB signing увімкнено" -Level Success
     } catch {
-        Write-Log "Помилка налаштування SMB підпису" -Level Warning
+        Write-Log "Помилка налаштування SMB signingу" -Level Warning
     }
 
-    # SMB шифрування
+    # SMB encryption
     try {
         Set-SmbServerConfiguration -EncryptData $true -Force
-        Write-Log "SMB шифрування увімкнено" -Level Success
+        Write-Log "SMB encryption увімкнено" -Level Success
     } catch {
-        Write-Log "Помилка налаштування SMB шифрування" -Level Warning
+        Write-Log "Помилка налаштування SMB encryption" -Level Warning
     }
 } else {
-    Write-Log "SMB пропущено (-SkipSMB)" -Level Warning
+    Write-Log "SMB skipped (-SkipSMB)" -Level Warning
 }
 
 # =============================================================================
 # LLMNR вимкнення (Responder attack mitigation)
 # =============================================================================
-Write-Log "Вимкнення LLMNR..." -Level Info
+Write-Log "Disabling LLMNR..." -Level Info
 
 $llmnrPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"
 if (-not (Test-Path $llmnrPath)) {
@@ -165,48 +165,48 @@ if (-not (Test-Path $llmnrPath)) {
 }
 Set-ItemProperty -Path $llmnrPath -Name "EnableMulticast" -Value 0 -Type DWord -Force
 
-Write-Log "LLMNR вимкнено" -Level Success
+Write-Log "LLMNR disabled" -Level Success
 
 # =============================================================================
 # NetBIOS вимкнення на всіх адаптерах
 # =============================================================================
-Write-Log "Вимкнення NetBIOS over TCP/IP..." -Level Info
+Write-Log "Disabling NetBIOS over TCP/IP..." -Level Info
 
 $adapters = Get-WmiObject Win32_NetworkAdapterConfiguration -Filter "IPEnabled=TRUE"
 foreach ($adapter in $adapters) {
     $adapter.SetTcpipNetbios(2) | Out-Null  # 2 = Disable NetBIOS
 }
 
-Write-Log "NetBIOS вимкнено на всіх адаптерах" -Level Success
+Write-Log "NetBIOS disabled on all adapters" -Level Success
 
 # =============================================================================
-# Захист від Pass-the-Hash
+# Pass-the-Hash protection
 # =============================================================================
-Write-Log "Налаштування захисту від Pass-the-Hash..." -Level Info
+Write-Log "Configuring Pass-the-Hash protection..." -Level Info
 
 $pthSettings = @(
-    # Обмеження WDigest (plain-text паролі в пам'яті)
+    # Restricting WDigest (plain-text passwords in memory)
     @{
         Path = "HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest"
         Name = "UseLogonCredential"
         Value = 0
         Type = "DWord"
     },
-    # LSA захист
+    # LSA protection
     @{
         Path = "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
         Name = "RunAsPPL"
         Value = 1
         Type = "DWord"
     },
-    # Вимкнення збереження LM hash
+    # Disabling LM hash storage
     @{
         Path = "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
         Name = "NoLMHash"
         Value = 1
         Type = "DWord"
     },
-    # Обмеження anonymous доступу
+    # Restricting anonymous access
     @{
         Path = "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
         Name = "RestrictAnonymous"
@@ -219,7 +219,7 @@ $pthSettings = @(
         Value = 1
         Type = "DWord"
     },
-    # Credential Guard prep (якщо підтримується)
+    # Credential Guard prep (if supported)
     @{
         Path = "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard"
         Name = "EnableVirtualizationBasedSecurity"
@@ -234,16 +234,16 @@ foreach ($setting in $pthSettings) {
             New-Item -Path $setting.Path -Force | Out-Null
         }
         Set-ItemProperty -Path $setting.Path -Name $setting.Name -Value $setting.Value -Type $setting.Type -Force
-        Write-Log "Встановлено: $($setting.Name)" -Level Success
+        Write-Log "Set: $($setting.Name)" -Level Success
     } catch {
-        Write-Log "Помилка: $($setting.Name)" -Level Warning
+        Write-Log "Error: $($setting.Name)" -Level Warning
     }
 }
 
 # =============================================================================
 # UAC посилення
 # =============================================================================
-Write-Log "Посилення UAC..." -Level Info
+Write-Log "Strengthening UAC..." -Level Info
 
 $uacSettings = @(
     @{
@@ -282,42 +282,42 @@ foreach ($setting in $uacSettings) {
     try {
         Set-ItemProperty -Path $setting.Path -Name $setting.Name -Value $setting.Value -Type $setting.Type -Force
     } catch {
-        Write-Log "Помилка UAC: $($setting.Name)" -Level Warning
+        Write-Log "UAC error: $($setting.Name)" -Level Warning
     }
 }
 
-Write-Log "UAC посилено" -Level Success
+Write-Log "UAC strengthened" -Level Success
 
 # =============================================================================
 # RDP обмеження
 # =============================================================================
-Write-Log "Налаштування RDP безпеки..." -Level Info
+Write-Log "Configuring RDP security..." -Level Info
 
 # NLA (Network Level Authentication)
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1 -Type DWord -Force
 
-# Мінімальний рівень шифрування
+# Minimum encryption level
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "MinEncryptionLevel" -Value 3 -Type DWord -Force
 
-# Вимкнення CredSSP Oracle Remediation (захист від CVE-2018-0886)
+# Disabling CredSSP Oracle Remediation (protection from CVE-2018-0886)
 $credsspPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters"
 if (-not (Test-Path $credsspPath)) {
     New-Item -Path $credsspPath -Force | Out-Null
 }
 Set-ItemProperty -Path $credsspPath -Name "AllowEncryptionOracle" -Value 0 -Type DWord -Force
 
-Write-Log "RDP налаштовано (NLA увімкнено)" -Level Success
+Write-Log "RDP configured (NLA enabled)" -Level Success
 
 # =============================================================================
 # Windows Defender посилення
 # =============================================================================
-Write-Log "Посилення Windows Defender..." -Level Info
+Write-Log "Strengthening Windows Defender..." -Level Info
 
 try {
-    # Увімкнення захисту в реальному часі
+    # Enabling real-time protection
     Set-MpPreference -DisableRealtimeMonitoring $false -ErrorAction SilentlyContinue
 
-    # PUA захист
+    # PUA protection
     Set-MpPreference -PUAProtection Enabled -ErrorAction SilentlyContinue
 
     # Behavior monitoring
@@ -358,65 +358,65 @@ try {
         Add-MpPreference -AttackSurfaceReductionRules_Ids $rule.Key -AttackSurfaceReductionRules_Actions $rule.Value -ErrorAction SilentlyContinue
     }
 
-    Write-Log "Windows Defender посилено (ASR правила увімкнено)" -Level Success
+    Write-Log "Windows Defender strengthened (ASR rules enabled)" -Level Success
 } catch {
-    Write-Log "Помилка налаштування Defender: $_" -Level Warning
+    Write-Log "Defender configuration error: $_" -Level Warning
 }
 
 # =============================================================================
 # Вимкнення автозапуску
 # =============================================================================
-Write-Log "Вимкнення автозапуску..." -Level Info
+Write-Log "Disabling autorun..." -Level Info
 
 Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name "NoDriveTypeAutoRun" -Value 255 -Type DWord -Force
 Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name "NoAutorun" -Value 1 -Type DWord -Force
 
-Write-Log "Автозапуск вимкнено" -Level Success
+Write-Log "Autorun disabled" -Level Success
 
 # =============================================================================
 # PowerShell обмеження
 # =============================================================================
-Write-Log "Налаштування PowerShell безпеки..." -Level Info
+Write-Log "Configuring PowerShell security..." -Level Info
 
-# Constrained Language Mode для звичайних користувачів (не адмінів)
-# Це обмежує можливості PowerShell скриптів
+# Constrained Language Mode for regular users (non-admins)
+# This restricts PowerShell script capabilities
 
-# Вимкнення PowerShell v2 (bypass для AMSI)
+# Disabling PowerShell v2 (bypass for AMSI)
 try {
     Disable-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2Root -NoRestart -ErrorAction SilentlyContinue
     Disable-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2 -NoRestart -ErrorAction SilentlyContinue
-    Write-Log "PowerShell v2 вимкнено" -Level Success
+    Write-Log "PowerShell v2 disabled" -Level Success
 } catch {
-    Write-Log "PowerShell v2 вже вимкнено" -Level Warning
+    Write-Log "PowerShell v2 already disabled" -Level Warning
 }
 
 # =============================================================================
-# Перевірка результатів
+# Verification результатів
 # =============================================================================
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
-Write-Host "  Windows 11 Hardening завершено!" -ForegroundColor Green
+Write-Host "  Windows 11 Hardening completed!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Застосовано:" -ForegroundColor Cyan
-Write-Host "  [+] Windows Firewall налаштовано"
-Write-Host "  [+] SMBv1 вимкнено, SMB підпис увімкнено"
-Write-Host "  [+] LLMNR/NetBIOS вимкнено"
-Write-Host "  [+] Захист від Pass-the-Hash"
-Write-Host "  [+] UAC посилено"
-Write-Host "  [+] RDP NLA увімкнено"
-Write-Host "  [+] Windows Defender ASR правила"
-Write-Host "  [+] Автозапуск вимкнено"
-Write-Host "  [+] PowerShell v2 вимкнено"
+Write-Host "Applied:" -ForegroundColor Cyan
+Write-Host "  [+] Windows Firewall configured"
+Write-Host "  [+] SMBv1 disabled, SMB signing увімкнено"
+Write-Host "  [+] LLMNR/NetBIOS disabled"
+Write-Host "  [+] Pass-the-Hash protection"
+Write-Host "  [+] UAC strengthened"
+Write-Host "  [+] RDP NLA enabled"
+Write-Host "  [+] Windows Defender ASR rules"
+Write-Host "  [+] Autorun disabled"
+Write-Host "  [+] PowerShell v2 disabled"
 Write-Host ""
-Write-Host "ВАЖЛИВО:" -ForegroundColor Yellow
-Write-Host "  - Рекомендується перезавантаження"
-Write-Host "  - Перевірте роботу мережевих додатків"
-Write-Host "  - Деякі старі програми можуть не працювати"
+Write-Host "IMPORTANT:" -ForegroundColor Yellow
+Write-Host "  - Reboot recommended"
+Write-Host "  - Check network application functionality"
+Write-Host "  - Some old programs may not work"
 Write-Host ""
 
 # Verification
-Write-Host "Перевірка:" -ForegroundColor Cyan
+Write-Host "Verification:" -ForegroundColor Cyan
 $firewallStatus = Get-NetFirewallProfile | Select-Object Name, Enabled
 foreach ($profile in $firewallStatus) {
     $status = if ($profile.Enabled) { "Enabled" } else { "Disabled" }

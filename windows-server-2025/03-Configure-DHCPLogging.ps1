@@ -14,7 +14,7 @@
 
 .NOTES
     Запускати на DHCP сервері
-    Потребує прав адміністратора
+    Requires administrator rights
 #>
 
 #Requires -RunAsAdministrator
@@ -42,7 +42,7 @@ Write-Host "============================================================" -Foreg
 Write-Host ""
 
 # =============================================================================
-# Перевірка DHCP сервісу
+# Verification DHCP сервісу
 # =============================================================================
 $dhcpService = Get-Service -Name DHCPServer -ErrorAction SilentlyContinue
 if (-not $dhcpService) {
@@ -117,7 +117,7 @@ try {
 }
 
 # =============================================================================
-# Створення директорії для логів
+# Creating directory for logs
 # =============================================================================
 $dhcpLogDir = "C:\Windows\System32\dhcp"
 if (-not (Test-Path $dhcpLogDir)) {
@@ -134,9 +134,9 @@ Set-Acl -Path $dhcpLogDir -AclObject $acl
 Write-Log "DHCP Log директорія: $dhcpLogDir" -Level Info
 
 # =============================================================================
-# Перезапуск DHCP сервісу
+# Restart DHCP сервісу
 # =============================================================================
-Write-Log "Перезапуск DHCP сервісу..." -Level Info
+Write-Log "Restart DHCP сервісу..." -Level Info
 
 try {
     Restart-Service -Name DHCPServer -Force
@@ -161,7 +161,7 @@ Write-Host "  DHCP Logging Configuration Complete!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "DHCP Audit Log файли:" -ForegroundColor Cyan
-Write-Host "  Директорія: $dhcpLogDir"
+Write-Host "  Directory: $dhcpLogDir"
 Write-Host "  Формат: DhcpSrvLog-<Day>.log"
 Write-Host ""
 Write-Host "Важливі DHCP Event IDs:" -ForegroundColor Yellow

@@ -1,16 +1,16 @@
 ﻿<#
 .SYNOPSIS
-    Встановлення Grafana Alloy для збору логів Windows.
+    Install Grafana Alloy for Windows log collection.
 
 .DESCRIPTION
-    Завантажує та встановлює Grafana Alloy (замінює deprecated Promtail).
-    Alloy збирає Windows Event Logs та відправляє до Loki.
+    Downloads and installs Grafana Alloy (replaces deprecated Promtail).
+    Alloy collects Windows Event Logs and sends to Loki.
 
 .PARAMETER LokiUrl
-    URL Loki сервера (наприклад, http://10.0.1.2:3100)
+    Loki server URL (e.g., http://10.0.1.2:3100)
 
 .PARAMETER ConfigPath
-    Шлях до локального конфіг файлу config.alloy
+    Path to local config file config.alloy
 
 .EXAMPLE
     .\04-Install-Alloy.ps1 -LokiUrl "http://10.0.1.2:3100"
@@ -19,7 +19,7 @@
     .\04-Install-Alloy.ps1 -ConfigPath "C:\temp\config.alloy"
 
 .NOTES
-    Потребує прав адміністратора
+    Requires administrator rights
     Alloy 1.x (replaces deprecated Promtail)
 #>
 
@@ -56,13 +56,13 @@ $dataDir = "C:\ProgramData\GrafanaLabs\Alloy"
 $tempDir = "$env:TEMP\alloy_install"
 
 # =============================================================================
-# Перевірка чи вже встановлено
+# Checking if already installed
 # =============================================================================
 $existingService = Get-Service -Name "Alloy" -ErrorAction SilentlyContinue
 
 if ($existingService) {
-    Write-Log "Alloy вже встановлено" -Level Warning
-    Write-Log "Оновлення конфігурації..." -Level Info
+    Write-Log "Alloy already installed" -Level Warning
+    Write-Log "Updating configuration..." -Level Info
 
     # Stop service for config update
     Stop-Service -Name "Alloy" -Force -ErrorAction SilentlyContinue
@@ -70,7 +70,7 @@ if ($existingService) {
 
     if ($ConfigPath -and (Test-Path $ConfigPath)) {
         Copy-Item $ConfigPath -Destination "$dataDir\config.alloy" -Force
-        Write-Log "Конфігурацію оновлено з $ConfigPath" -Level Success
+        Write-Log "Configuration updated з $ConfigPath" -Level Success
     }
 
     Start-Service -Name "Alloy"
@@ -81,7 +81,7 @@ if ($existingService) {
 # =============================================================================
 # Завантаження Alloy
 # =============================================================================
-Write-Log "Завантаження Grafana Alloy..." -Level Info
+Write-Log "Downloading Grafana Alloy..." -Level Info
 
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
@@ -94,23 +94,23 @@ $zipPath = "$tempDir\alloy-installer.zip"
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -UseBasicParsing
-    Write-Log "Завантажено Alloy v$alloyVersion" -Level Success
+    Write-Log "Downloaded Alloy v$alloyVersion" -Level Success
 } catch {
-    Write-Log "Помилка завантаження: $_" -Level Error
+    Write-Log "Download error: $_" -Level Error
     exit 1
 }
 
 # =============================================================================
-# Розпакування та встановлення
+# Extracting та встановлення
 # =============================================================================
-Write-Log "Встановлення Alloy..." -Level Info
+Write-Log "Installing Alloy..." -Level Info
 
 Expand-Archive -Path $zipPath -DestinationPath $tempDir -Force
 
 $installerPath = Get-ChildItem -Path $tempDir -Filter "alloy-installer-windows-*.exe" | Select-Object -First 1
 
 if (-not $installerPath) {
-    Write-Log "Installer не знайдено" -Level Error
+    Write-Log "Installer not found" -Level Error
     exit 1
 }
 
@@ -119,16 +119,16 @@ $installArgs = "/S"
 $process = Start-Process -FilePath $installerPath.FullName -ArgumentList $installArgs -Wait -PassThru -NoNewWindow
 
 if ($process.ExitCode -ne 0) {
-    Write-Log "Помилка встановлення (код: $($process.ExitCode))" -Level Error
+    Write-Log "Installation error (code: $($process.ExitCode))" -Level Error
     exit 1
 }
 
-Write-Log "Alloy встановлено" -Level Success
+Write-Log "Alloy installed" -Level Success
 
 # =============================================================================
 # Конфігурація
 # =============================================================================
-Write-Log "Налаштування конфігурації..." -Level Info
+Write-Log "Configuring settings..." -Level Info
 
 # Create data directory
 New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
@@ -137,7 +137,7 @@ New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
 if ($ConfigPath -and (Test-Path $ConfigPath)) {
     # Use provided config
     Copy-Item $ConfigPath -Destination "$dataDir\config.alloy" -Force
-    Write-Log "Використовується конфігурація: $ConfigPath" -Level Info
+    Write-Log "Using configuration: $ConfigPath" -Level Info
 } else {
     # Find config in script directory
     $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -161,9 +161,9 @@ if ($ConfigPath -and (Test-Path $ConfigPath)) {
 
     if ($foundConfig) {
         Copy-Item $foundConfig -Destination "$dataDir\config.alloy" -Force
-        Write-Log "Використовується конфігурація: $foundConfig" -Level Info
+        Write-Log "Using configuration: $foundConfig" -Level Info
     } else {
-        Write-Log "Конфігурацію не знайдено! Створюю базову..." -Level Warning
+        Write-Log "Configuration not found! Creating basic..." -Level Warning
 
         # Create minimal config
         $minimalConfig = @"
@@ -198,7 +198,7 @@ if ($LokiUrl) {
 # =============================================================================
 # Налаштування служби
 # =============================================================================
-Write-Log "Налаштування служби Windows..." -Level Info
+Write-Log "Configuring Windows service..." -Level Info
 
 # Configure service to use our config
 $serviceName = "Alloy"
@@ -217,7 +217,7 @@ if (Test-Path $regPath) {
 # =============================================================================
 # Запуск служби
 # =============================================================================
-Write-Log "Запуск служби Alloy..." -Level Info
+Write-Log "Starting Alloy service..." -Level Info
 
 Start-Service -Name $serviceName -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 5
@@ -225,14 +225,14 @@ Start-Sleep -Seconds 5
 $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
 
 if ($service -and $service.Status -eq "Running") {
-    Write-Log "Alloy запущено успішно!" -Level Success
+    Write-Log "Alloy started successfully!" -Level Success
 } else {
-    Write-Log "Служба Alloy не запустилась. Перевірте логи." -Level Warning
+    Write-Log "Alloy service did not start. Check logs." -Level Warning
     Write-Log "Event Viewer -> Application and Services Logs -> Alloy" -Level Info
 }
 
 # =============================================================================
-# Очистка
+# Cleanup
 # =============================================================================
 Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
 
@@ -241,17 +241,17 @@ Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
 # =============================================================================
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
-Write-Host "  Grafana Alloy встановлено!" -ForegroundColor Green
+Write-Host "  Grafana Alloy installed!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Директорія: $installDir" -ForegroundColor Cyan
-Write-Host "Конфігурація: $dataDir\config.alloy" -ForegroundColor Cyan
+Write-Host "Directory: $installDir" -ForegroundColor Cyan
+Write-Host "Configuration: $dataDir\config.alloy" -ForegroundColor Cyan
 Write-Host "Loki URL: $LokiUrl" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Команди:" -ForegroundColor Yellow
-Write-Host "  Get-Service Alloy                    # Статус"
-Write-Host "  Restart-Service Alloy                # Перезапуск"
+Write-Host "Commands:" -ForegroundColor Yellow
+Write-Host "  Get-Service Alloy                    # Status"
+Write-Host "  Restart-Service Alloy                # Restart"
 Write-Host "  Get-Content '$dataDir\config.alloy'  # Конфігурація"
 Write-Host ""
-Write-Host "Логи: Event Viewer -> Application -> Alloy" -ForegroundColor Yellow
+Write-Host "Logs: Event Viewer -> Application -> Alloy" -ForegroundColor Yellow
 Write-Host ""

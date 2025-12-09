@@ -12,7 +12,7 @@
     .\05-test-service-creation.ps1
 
 .NOTES
-    Запускати від адміністратора
+    Run as administrator
     Сервіси автоматично видаляються після тесту
 #>
 
@@ -45,7 +45,7 @@ $testServiceName2 = "TestSecurityService2"
 Write-TestLog "Test 1: Створення нового сервісу (Event 7045)..." -Status Info
 
 try {
-    # Видалення якщо існує
+    # Видалення if exists
     sc.exe delete $testServiceName 2>&1 | Out-Null
 
     # Створення сервісу через sc.exe
@@ -57,7 +57,7 @@ try {
         Write-TestLog "Помилка створення: $result" -Status Warning
     }
 } catch {
-    Write-TestLog "Помилка: $_" -Status Error
+    Write-TestLog "Error: $_" -Status Error
 }
 
 Start-Sleep -Seconds 2
@@ -68,7 +68,7 @@ Start-Sleep -Seconds 2
 Write-TestLog "Test 2: Створення сервісу через PowerShell..." -Status Info
 
 try {
-    # Видалення якщо існує
+    # Видалення if exists
     sc.exe delete $testServiceName2 2>&1 | Out-Null
 
     New-Service -Name $testServiceName2 `
@@ -105,7 +105,7 @@ try {
     Set-Service -Name $testServiceName -StartupType Manual -ErrorAction Stop
     Write-TestLog "Змінено StartupType на Manual (Event 7040)" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 # =============================================================================
@@ -122,7 +122,7 @@ try {
 
     Write-TestLog "Створено сервіс з unquoted path (вразливість!)" -Status Warning
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 # =============================================================================
@@ -138,13 +138,13 @@ try {
 
     Write-TestLog "Створено сервіс з PowerShell (SUSPICIOUS!)" -Status Warning
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 # =============================================================================
 # Cleanup
 # =============================================================================
-Write-TestLog "Очистка тестових сервісів..." -Status Info
+Write-TestLog "Cleanup тестових сервісів..." -Status Info
 
 $servicesToRemove = @($testServiceName, $testServiceName2, $suspiciousService, $psService)
 
@@ -166,7 +166,7 @@ Write-Host "============================================================" -Foreg
 Write-Host "  Тест завершено!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Перевірка подій:" -ForegroundColor Cyan
+Write-Host "Verification подій:" -ForegroundColor Cyan
 Write-Host ""
 
 # System Log - Event 7045 (Service Installed)

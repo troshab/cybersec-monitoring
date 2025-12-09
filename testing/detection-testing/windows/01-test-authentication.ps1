@@ -13,7 +13,7 @@
     .\01-test-authentication.ps1
 
 .NOTES
-    Запускати від адміністратора
+    Run as administrator
     Тільки для тестового середовища!
 #>
 
@@ -51,7 +51,7 @@ try {
     Start-Process -FilePath "cmd.exe" -ArgumentList "/c whoami" -WindowStyle Hidden -Wait
     Write-TestLog "Event 4624 має з'явитись в Security Log" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 # =============================================================================
@@ -131,13 +131,13 @@ try {
     # Створення credential object (не виконуємо реальний логін для безпеки)
     Write-TestLog "Event 4648 генерується при runas або network logon з credentials" -Status Info
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 # =============================================================================
 # Cleanup
 # =============================================================================
-Write-TestLog "Очистка тестових даних..." -Status Info
+Write-TestLog "Cleanup тестових даних..." -Status Info
 
 try {
     # Видалення тестового користувача
@@ -147,7 +147,7 @@ try {
     Write-TestLog "Користувач не існує або вже видалено" -Status Warning
 }
 
-# Очистка IPC$ підключень
+# Cleanup IPC$ підключень
 net use * /delete /y 2>&1 | Out-Null
 
 # =============================================================================
@@ -158,10 +158,10 @@ Write-Host "============================================================" -Foreg
 Write-Host "  Тест завершено!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Перевірка подій:" -ForegroundColor Cyan
+Write-Host "Verification подій:" -ForegroundColor Cyan
 Write-Host ""
 
-# Перевірка останніх подій
+# Verification останніх подій
 $events = @(
     @{Id = 4624; Name = "Successful Logon"},
     @{Id = 4625; Name = "Failed Logon"},
