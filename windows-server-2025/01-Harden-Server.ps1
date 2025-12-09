@@ -1,21 +1,21 @@
 ﻿<#
 .SYNOPSIS
-    Базове захищення (hardening) Windows Server 2025.
+    Basic protection (hardening) Windows Server 2025.
 
 .DESCRIPTION
     Застосовує базові налаштування безпеки для Windows Server:
     - Вимкнення небезпечних протоколів (SMBv1, TLS 1.0/1.1)
-    - Налаштування Windows Firewall
-    - Захист від Pass-the-Hash
-    - Обмеження anonymous доступу
+    - Configuring Windows Firewall
+    - Pass-the-Hash protection
+    - Restricting anonymous access
     - Налаштування RDP безпеки
 
 .EXAMPLE
     .\01-Harden-Server.ps1
 
 .NOTES
-    Запускати від адміністратора
-    Деякі зміни потребують перезавантаження
+    Run as administrator
+    Some changes require a reboot
 #>
 
 #Requires -RunAsAdministrator
@@ -48,26 +48,26 @@ Write-Host ""
 # =============================================================================
 # SMB Hardening
 # =============================================================================
-Write-Log "Налаштування SMB..." -Level Info
+Write-Log "Configuring SMB..." -Level Info
 
-# Вимкнення SMBv1
+# Disabling SMBv1
 try {
     Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force -ErrorAction SilentlyContinue
-    Write-Log "SMBv1 вимкнено на сервері" -Level Success
+    Write-Log "SMBv1 disabled на сервері" -Level Success
 } catch {
     Write-Log "SMBv1 вже вимкнено" -Level Warning
 }
 
-# SMB підпис (обов'язковий для серверів)
+# SMB signing (обов'язковий для серверів)
 Set-SmbServerConfiguration -RequireSecuritySignature $true -Force
 Set-SmbClientConfiguration -RequireSecuritySignature $true -Force
-Write-Log "SMB підпис увімкнено (обов'язковий)" -Level Success
+Write-Log "SMB signing увімкнено (обов'язковий)" -Level Success
 
-# SMB шифрування
+# SMB encryption
 Set-SmbServerConfiguration -EncryptData $true -Force
-Write-Log "SMB шифрування увімкнено" -Level Success
+Write-Log "SMB encryption увімкнено" -Level Success
 
-# Вимкнення SMB компресії (захист від CVE-2020-0796)
+# Вимкнення SMB компресії (protection from CVE-2020-0796)
 Set-SmbServerConfiguration -DisableCompression $true -Force -ErrorAction SilentlyContinue
 Write-Log "SMB компресія вимкнена" -Level Success
 
@@ -149,7 +149,7 @@ if (-not $SkipTLS) {
 # Windows Firewall
 # =============================================================================
 if (-not $SkipFirewall) {
-    Write-Log "Налаштування Windows Firewall..." -Level Info
+    Write-Log "Configuring Windows Firewall..." -Level Info
 
     # Увімкнення для всіх профілів
     Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True
@@ -164,22 +164,22 @@ if (-not $SkipFirewall) {
     Set-NetFirewallProfile -Profile Domain,Public,Private -LogFileName "%SystemRoot%\System32\LogFiles\Firewall\pfirewall.log"
     Set-NetFirewallProfile -Profile Domain,Public,Private -LogMaxSizeKilobytes 32768
 
-    Write-Log "Windows Firewall налаштовано" -Level Success
+    Write-Log "Windows Firewall configured" -Level Success
 } else {
-    Write-Log "Firewall пропущено (-SkipFirewall)" -Level Warning
+    Write-Log "Firewall skipped (-SkipFirewall)" -Level Warning
 }
 
 # =============================================================================
 # LLMNR/NetBIOS вимкнення
 # =============================================================================
-Write-Log "Вимкнення LLMNR..." -Level Info
+Write-Log "Disabling LLMNR..." -Level Info
 
 $llmnrPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"
 if (-not (Test-Path $llmnrPath)) {
     New-Item -Path $llmnrPath -Force | Out-Null
 }
 Set-ItemProperty -Path $llmnrPath -Name "EnableMulticast" -Value 0 -Type DWord -Force
-Write-Log "LLMNR вимкнено" -Level Success
+Write-Log "LLMNR disabled" -Level Success
 
 # NetBIOS на всіх адаптерах
 Write-Log "Вимкнення NetBIOS..." -Level Info
@@ -192,7 +192,7 @@ Write-Log "NetBIOS вимкнено" -Level Success
 # =============================================================================
 # Pass-the-Hash захист
 # =============================================================================
-Write-Log "Налаштування захисту від Pass-the-Hash..." -Level Info
+Write-Log "Configuring Pass-the-Hash protection..." -Level Info
 
 $pthSettings = @(
     # WDigest (plain-text паролі)
@@ -228,7 +228,7 @@ Write-Log "Захист від PtH налаштовано" -Level Success
 # =============================================================================
 # RDP Security
 # =============================================================================
-Write-Log "Налаштування RDP безпеки..." -Level Info
+Write-Log "Configuring RDP security..." -Level Info
 
 # NLA обов'язковий
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 1 -Type DWord -Force
@@ -239,12 +239,12 @@ Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\W
 # Security Layer (TLS)
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "SecurityLayer" -Value 2 -Type DWord -Force
 
-Write-Log "RDP налаштовано (NLA, TLS)" -Level Success
+Write-Log "RDP configured (NLA, TLS)" -Level Success
 
 # =============================================================================
 # Небезпечні служби
 # =============================================================================
-Write-Log "Вимкнення небезпечних служб..." -Level Info
+Write-Log "Disabling dangerous services..." -Level Info
 
 $dangerousServices = @(
     "Browser",           # Computer Browser
@@ -263,7 +263,7 @@ foreach ($svc in $dangerousServices) {
         if ($service) {
             Stop-Service -Name $svc -Force -ErrorAction SilentlyContinue
             Set-Service -Name $svc -StartupType Disabled -ErrorAction SilentlyContinue
-            Write-Log "Вимкнено: $svc" -Level Success
+            Write-Log "Disabled: $svc" -Level Success
         }
     } catch {
         # Service might not exist
@@ -273,14 +273,14 @@ foreach ($svc in $dangerousServices) {
 # =============================================================================
 # PowerShell v2 вимкнення
 # =============================================================================
-Write-Log "Вимкнення PowerShell v2..." -Level Info
+Write-Log "Disabling PowerShell v2..." -Level Info
 
 try {
     Disable-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2Root -NoRestart -ErrorAction SilentlyContinue
     Disable-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2 -NoRestart -ErrorAction SilentlyContinue
-    Write-Log "PowerShell v2 вимкнено" -Level Success
+    Write-Log "PowerShell v2 disabled" -Level Success
 } catch {
-    Write-Log "PowerShell v2 вже вимкнено" -Level Warning
+    Write-Log "PowerShell v2 already disabled" -Level Warning
 }
 
 # =============================================================================
@@ -336,18 +336,18 @@ Write-Host "============================================================" -Foreg
 Write-Host "  Windows Server 2025 Hardening завершено!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Застосовано:" -ForegroundColor Cyan
-Write-Host "  [+] SMBv1 вимкнено, SMB підпис обов'язковий"
+Write-Host "Applied:" -ForegroundColor Cyan
+Write-Host "  [+] SMBv1 disabled, SMB signing обов'язковий"
 Write-Host "  [+] TLS 1.0/1.1 вимкнено, TLS 1.2/1.3 увімкнено"
-Write-Host "  [+] Windows Firewall налаштовано"
-Write-Host "  [+] LLMNR/NetBIOS вимкнено"
-Write-Host "  [+] Захист від Pass-the-Hash"
+Write-Host "  [+] Windows Firewall configured"
+Write-Host "  [+] LLMNR/NetBIOS disabled"
+Write-Host "  [+] Pass-the-Hash protection"
 Write-Host "  [+] RDP NLA обов'язковий"
 Write-Host "  [+] WinRM посилено"
 Write-Host "  [+] Audit Policy розширено"
 Write-Host ""
-Write-Host "ВАЖЛИВО:" -ForegroundColor Yellow
-Write-Host "  - Рекомендується перезавантаження"
+Write-Host "IMPORTANT:" -ForegroundColor Yellow
+Write-Host "  - Reboot recommended"
 Write-Host "  - Перевірте роботу сервісів"
 Write-Host "  - TLS зміни можуть вплинути на старі клієнти"
 Write-Host ""

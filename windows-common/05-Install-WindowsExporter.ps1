@@ -57,7 +57,7 @@ $installDir = "C:\Program Files\windows_exporter"
 $tempDir = "$env:TEMP\winexporter_install"
 
 # =============================================================================
-# Перевірка існуючої установки
+# Verification існуючої установки
 # =============================================================================
 $existingService = Get-Service -Name "windows_exporter" -ErrorAction SilentlyContinue
 
@@ -90,7 +90,7 @@ try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-WebRequest -Uri $downloadUrl -OutFile $msiFile -UseBasicParsing
 } catch {
-    Write-Log "Помилка завантаження: $_" -Level Error
+    Write-Log "Download error: $_" -Level Error
     exit 1
 }
 
@@ -111,7 +111,7 @@ $msiArgs = @(
 $process = Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -PassThru -NoNewWindow
 
 if ($process.ExitCode -ne 0) {
-    Write-Log "Помилка встановлення MSI (код: $($process.ExitCode))" -Level Error
+    Write-Log "Installation error MSI (code: $($process.ExitCode))" -Level Error
     exit 1
 }
 
@@ -120,7 +120,7 @@ Write-Log "MSI встановлено" -Level Success
 # =============================================================================
 # Налаштування Firewall
 # =============================================================================
-Write-Log "Налаштування Windows Firewall..." -Level Info
+Write-Log "Configuring Windows Firewall..." -Level Info
 
 $ruleName = "Windows Exporter"
 
@@ -157,21 +157,21 @@ if ($service.Status -eq "Running") {
 }
 
 # =============================================================================
-# Перевірка метрик
+# Verification метрик
 # =============================================================================
-Write-Log "Перевірка метрик..." -Level Info
+Write-Log "Verification метрик..." -Level Info
 
 try {
     $response = Invoke-WebRequest -Uri "http://localhost:$ListenPort/metrics" -UseBasicParsing -TimeoutSec 5
     $metricsCount = ($response.Content -split "`n" | Where-Object { $_ -match "^windows_" }).Count
 
-    Write-Log "Отримано $metricsCount метрик" -Level Success
+    Write-Log "Received $metricsCount метрик" -Level Success
 } catch {
     Write-Log "Не вдалося отримати метрики: $_" -Level Warning
 }
 
 # =============================================================================
-# Очистка
+# Cleanup
 # =============================================================================
 Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
 

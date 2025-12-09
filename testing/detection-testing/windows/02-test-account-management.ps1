@@ -14,7 +14,7 @@
     .\02-test-account-management.ps1
 
 .NOTES
-    Запускати від адміністратора
+    Run as administrator
     Створює та видаляє тестові акаунти
 #>
 
@@ -136,7 +136,7 @@ try {
     Enable-LocalUser -Name $testUsers[1] -ErrorAction Stop
     Write-TestLog "Увімкнено $($testUsers[1]) (Event 4722)" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 Start-Sleep -Seconds 1
@@ -173,7 +173,7 @@ Start-Sleep -Seconds 1
 # =============================================================================
 # Cleanup
 # =============================================================================
-Write-TestLog "Очистка тестових даних..." -Status Info
+Write-TestLog "Cleanup тестових даних..." -Status Info
 
 # Видалення користувачів з групи
 foreach ($user in $testUsers) {
@@ -208,7 +208,7 @@ Write-Host "============================================================" -Foreg
 Write-Host "  Тест завершено!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Перевірка подій:" -ForegroundColor Cyan
+Write-Host "Verification подій:" -ForegroundColor Cyan
 Write-Host ""
 
 $events = @(

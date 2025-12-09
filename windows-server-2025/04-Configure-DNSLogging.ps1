@@ -14,7 +14,7 @@
 
 .NOTES
     Запускати на DNS сервері
-    Потребує прав адміністратора
+    Requires administrator rights
     Аналітичне логування може збільшити навантаження
 #>
 
@@ -46,7 +46,7 @@ Write-Host "============================================================" -Foreg
 Write-Host ""
 
 # =============================================================================
-# Перевірка DNS сервісу
+# Verification DNS сервісу
 # =============================================================================
 $dnsService = Get-Service -Name DNS -ErrorAction SilentlyContinue
 if (-not $dnsService) {
@@ -173,7 +173,7 @@ $dnsQueryLogging = @"
 </QueryList>
 "@
 
-# Створення директорії для DNS логів
+# Creating directory для DNS логів
 $dnsLogDir = "C:\Windows\System32\dns"
 if (-not (Test-Path $dnsLogDir)) {
     New-Item -ItemType Directory -Path $dnsLogDir -Force | Out-Null

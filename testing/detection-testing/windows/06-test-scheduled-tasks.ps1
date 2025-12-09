@@ -14,7 +14,7 @@
     .\06-test-scheduled-tasks.ps1
 
 .NOTES
-    Запускати від адміністратора
+    Run as administrator
     Завдання автоматично видаляються після тесту
 #>
 
@@ -45,7 +45,7 @@ $taskPath = "\SecurityTests\"
 # =============================================================================
 # Cleanup existing test tasks
 # =============================================================================
-Write-TestLog "Очистка існуючих тестових завдань..." -Status Info
+Write-TestLog "Cleanup існуючих тестових завдань..." -Status Info
 
 Unregister-ScheduledTask -TaskName $taskName1 -TaskPath $taskPath -Confirm:$false -ErrorAction SilentlyContinue
 Unregister-ScheduledTask -TaskName $taskName2 -TaskPath $taskPath -Confirm:$false -ErrorAction SilentlyContinue
@@ -83,7 +83,7 @@ try {
 
     Write-TestLog "Підозріле завдання $taskName2 створено (SUSPICIOUS!)" -Status Warning
 } catch {
-    Write-TestLog "Помилка: $_" -Status Error
+    Write-TestLog "Error: $_" -Status Error
 }
 
 Start-Sleep -Seconds 2
@@ -97,7 +97,7 @@ try {
     Disable-ScheduledTask -TaskName $taskName1 -TaskPath $taskPath -ErrorAction Stop | Out-Null
     Write-TestLog "Завдання $taskName1 вимкнено (Event 4701)" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 Start-Sleep -Seconds 1
@@ -111,7 +111,7 @@ try {
     Enable-ScheduledTask -TaskName $taskName1 -TaskPath $taskPath -ErrorAction Stop | Out-Null
     Write-TestLog "Завдання $taskName1 увімкнено (Event 4700)" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 Start-Sleep -Seconds 1
@@ -127,7 +127,7 @@ try {
     Set-ScheduledTask -InputObject $task -ErrorAction Stop | Out-Null
     Write-TestLog "Завдання $taskName1 оновлено (Event 4702)" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 Start-Sleep -Seconds 1
@@ -143,13 +143,13 @@ try {
     schtasks /create /tn $schtaskName /tr "cmd.exe /c echo schtasks test" /sc once /st 23:59 /ru SYSTEM 2>&1 | Out-Null
     Write-TestLog "Завдання $schtaskName створено через schtasks.exe" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 # =============================================================================
 # Cleanup
 # =============================================================================
-Write-TestLog "Очистка тестових завдань..." -Status Info
+Write-TestLog "Cleanup тестових завдань..." -Status Info
 
 try {
     Unregister-ScheduledTask -TaskName $taskName1 -TaskPath $taskPath -Confirm:$false -ErrorAction SilentlyContinue
@@ -174,7 +174,7 @@ Write-Host "============================================================" -Foreg
 Write-Host "  Тест завершено!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Перевірка подій:" -ForegroundColor Cyan
+Write-Host "Verification подій:" -ForegroundColor Cyan
 Write-Host ""
 
 $events = @(

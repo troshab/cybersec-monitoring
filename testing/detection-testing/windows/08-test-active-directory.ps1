@@ -15,7 +15,7 @@
 
 .NOTES
     ЗАПУСКАТИ ТІЛЬКИ НА КОНТРОЛЕРІ ДОМЕНУ!
-    Запускати від адміністратора домену
+    Run as administrator домену
     Тестові об'єкти автоматично видаляються
 #>
 
@@ -46,7 +46,7 @@ Write-Host ""
 # =============================================================================
 # Check if running on Domain Controller
 # =============================================================================
-Write-TestLog "Перевірка середовища..." -Status Info
+Write-TestLog "Verification середовища..." -Status Info
 
 $isDC = $false
 try {
@@ -82,7 +82,7 @@ $testOUPath = "OU=$TestOUName,$domainDN"
 Write-TestLog "Test 1: Створення OU (Event 5137)..." -Status Info
 
 try {
-    # Видалення якщо існує
+    # Видалення if exists
     Get-ADOrganizationalUnit -Identity $testOUPath -ErrorAction SilentlyContinue |
         Set-ADOrganizationalUnit -ProtectedFromAccidentalDeletion $false -PassThru |
         Remove-ADOrganizationalUnit -Confirm:$false -ErrorAction SilentlyContinue
@@ -169,7 +169,7 @@ try {
     Add-ADGroupMember -Identity $TestGroupName -Members $TestUserName -ErrorAction Stop
     Write-TestLog "Користувач доданий до групи (Event 5136)" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 Start-Sleep -Seconds 1
@@ -197,7 +197,7 @@ try {
     Remove-ADGroupMember -Identity "Domain Admins" -Members $TestUserName -Confirm:$false -ErrorAction Stop
     Write-TestLog "Користувач видалений з Domain Admins (Event 5136)" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 Start-Sleep -Seconds 1
@@ -211,7 +211,7 @@ try {
     Set-ADGroup -Identity $TestGroupName -Description "Modified group description" -ErrorAction Stop
     Write-TestLog "Група змінена (Event 5136)" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 Start-Sleep -Seconds 1
@@ -241,7 +241,7 @@ try {
 # =============================================================================
 # Cleanup
 # =============================================================================
-Write-TestLog "Очистка тестових об'єктів..." -Status Info
+Write-TestLog "Cleanup тестових об'єктів..." -Status Info
 
 Start-Sleep -Seconds 2
 
@@ -286,7 +286,7 @@ Write-Host "============================================================" -Foreg
 Write-Host "  Тест завершено!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Перевірка подій:" -ForegroundColor Cyan
+Write-Host "Verification подій:" -ForegroundColor Cyan
 Write-Host ""
 
 $events = @(

@@ -1,29 +1,29 @@
 ﻿<#
 .SYNOPSIS
-    Включення повного логування PowerShell.
+    Enable full PowerShell logging.
 
 .DESCRIPTION
-    Налаштовує Script Block Logging, Module Logging та опціонально Transcription
-    для детального відстеження всіх PowerShell команд.
+    Configures Script Block Logging, Module Logging and optionally Transcription
+    for detailed tracking of all PowerShell commands.
 
-    Критично важливо для виявлення:
-    - Encoded PowerShell команд
+    Critical for detecting:
+    - Encoded PowerShell commands
     - Download cradles (IEX, Invoke-WebRequest)
-    - Malware та lateral movement
+    - Malware and lateral movement
 
 .PARAMETER EnableTranscription
-    Включити запис всіх PowerShell сесій у файли (генерує багато даних)
+    Enable recording of all PowerShell sessions to files (generates a lot of data)
 
 .PARAMETER TranscriptPath
-    Шлях для збереження transcript файлів
+    Path to save transcript files
 
 .EXAMPLE
     .\02-Enable-PowerShellLogging.ps1
-    Включає Script Block та Module logging
+    Enables Script Block and Module logging
 
 .EXAMPLE
     .\02-Enable-PowerShellLogging.ps1 -EnableTranscription -TranscriptPath "C:\PSLogs"
-    Включає також Transcription
+    Also enables Transcription
 
 .NOTES
     Event IDs: 4103 (Module Logging), 4104 (Script Block Logging)
@@ -72,7 +72,7 @@ Write-Host ""
 # =============================================================================
 # Script Block Logging (Event ID 4104)
 # =============================================================================
-Write-Log "Налаштування Script Block Logging..." -Level Info
+Write-Log "Configuring Script Block Logging..." -Level Info
 
 # 64-bit
 $regPath64 = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging"
@@ -90,12 +90,12 @@ if (-not (Test-Path $regPath32)) {
 Set-ItemProperty -Path $regPath32 -Name "EnableScriptBlockLogging" -Value 1 -Type DWord
 Set-ItemProperty -Path $regPath32 -Name "EnableScriptBlockInvocationLogging" -Value 1 -Type DWord
 
-Write-Log "Script Block Logging включено" -Level Success
+Write-Log "Script Block Logging enabled" -Level Success
 
 # =============================================================================
 # Module Logging (Event ID 4103)
 # =============================================================================
-Write-Log "Налаштування Module Logging..." -Level Info
+Write-Log "Configuring Module Logging..." -Level Info
 
 # 64-bit
 $modPath64 = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging"
@@ -104,7 +104,7 @@ if (-not (Test-Path $modPath64)) {
 }
 Set-ItemProperty -Path $modPath64 -Name "EnableModuleLogging" -Value 1 -Type DWord
 
-# Module Names (логувати всі модулі)
+# Module Names (log all modules)
 $modNamesPath64 = "$modPath64\ModuleNames"
 if (-not (Test-Path $modNamesPath64)) {
     New-Item -Path $modNamesPath64 -Force | Out-Null
@@ -124,20 +124,20 @@ if (-not (Test-Path $modNamesPath32)) {
 }
 Set-ItemProperty -Path $modNamesPath32 -Name "*" -Value "*" -Type String
 
-Write-Log "Module Logging включено" -Level Success
+Write-Log "Module Logging enabled" -Level Success
 
 # =============================================================================
-# Transcription (опціонально)
+# Transcription (optional)
 # =============================================================================
 if ($EnableTranscription) {
-    Write-Log "Налаштування Transcription..." -Level Info
+    Write-Log "Configuring Transcription..." -Level Info
 
-    # Створення директорії для логів
+    # Creating directory for logs
     if (-not (Test-Path $TranscriptPath)) {
         New-Item -ItemType Directory -Path $TranscriptPath -Force | Out-Null
     }
 
-    # Права доступу (тільки адміни можуть читати)
+    # Access permissions (only admins can read)
     $acl = Get-Acl $TranscriptPath
     $acl.SetAccessRuleProtection($true, $false)
     $adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
@@ -168,42 +168,42 @@ if ($EnableTranscription) {
     Set-ItemProperty -Path $transPath32 -Name "OutputDirectory" -Value $TranscriptPath -Type String
     Set-ItemProperty -Path $transPath32 -Name "EnableInvocationHeader" -Value 1 -Type DWord
 
-    Write-Log "Transcription включено. Логи: $TranscriptPath" -Level Success
+    Write-Log "Transcription enabled. Logs: $TranscriptPath" -Level Success
 } else {
-    Write-Log "Transcription пропущено (використовуйте -EnableTranscription для включення)" -Level Warning
+    Write-Log "Transcription skipped (use -EnableTranscription to enable)" -Level Warning
 }
 
 # =============================================================================
 # Event Log Size
 # =============================================================================
-Write-Log "Збільшення розміру PowerShell Event Log..." -Level Info
+Write-Log "Increasing PowerShell Event Log size..." -Level Info
 
 wevtutil sl "Microsoft-Windows-PowerShell/Operational" /ms:268435456
 wevtutil sl "Windows PowerShell" /ms:134217728
 
-Write-Log "Розмір логу: 256MB" -Level Success
+Write-Log "Log size: 256MB" -Level Success
 
 # =============================================================================
 # Verification
 # =============================================================================
 Write-Host ""
-Write-Log "Перевірка налаштувань..." -Level Info
+Write-Log "Verifying settings..." -Level Info
 
 $scriptBlock = Get-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -ErrorAction SilentlyContinue
 $moduleLog = Get-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging" -ErrorAction SilentlyContinue
 
 Write-Host ""
-Write-Host "Поточний стан:" -ForegroundColor Yellow
+Write-Host "Current status:" -ForegroundColor Yellow
 Write-Host "  Script Block Logging: $(if($scriptBlock.EnableScriptBlockLogging -eq 1){'Enabled'}else{'Disabled'})"
 Write-Host "  Module Logging: $(if($moduleLog.EnableModuleLogging -eq 1){'Enabled'}else{'Disabled'})"
 Write-Host "  Transcription: $(if($EnableTranscription){'Enabled'}else{'Disabled'})"
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
-Write-Host "  PowerShell Logging налаштовано успішно!" -ForegroundColor Green
+Write-Host "  PowerShell Logging configured successfully!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Тест логування:" -ForegroundColor Cyan
+Write-Host "Logging test:" -ForegroundColor Cyan
 Write-Host '  Write-Host "Test PowerShell Logging"'
 Write-Host "  Get-WinEvent -LogName 'Microsoft-Windows-PowerShell/Operational' -MaxEvents 5"
 Write-Host ""

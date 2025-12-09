@@ -1,13 +1,13 @@
 ﻿<#
 .SYNOPSIS
-    Вимкнення зайвої телеметрії Windows 11.
+    Disable unnecessary Windows 11 telemetry.
 
 .DESCRIPTION
-    Вимикає телеметрію та діагностичні служби Windows 11,
-    що можуть заважати безпековому моніторингу або надсилати
-    дані назовні.
+    Disables Windows 11 telemetry and diagnostic services,
+    that may interfere with security monitoring or send
+    data outside.
 
-    НЕ впливає на:
+    Does NOT affect:
     - Windows Update
     - Windows Defender
     - Event Logging
@@ -16,8 +16,8 @@
     .\01-Disable-Telemetry.ps1
 
 .NOTES
-    Запускати від адміністратора
-    Деякі зміни потребують перезавантаження
+    Run as administrator
+    Some changes require a reboot
 #>
 
 #Requires -RunAsAdministrator
@@ -47,7 +47,7 @@ Write-Host ""
 # =============================================================================
 # Служби телеметрії
 # =============================================================================
-Write-Log "Налаштування служб телеметрії..." -Level Info
+Write-Log "Configuring telemetry services..." -Level Info
 
 $telemetryServices = @(
     @{Name = "DiagTrack"; DisplayName = "Connected User Experiences and Telemetry"},
@@ -61,17 +61,17 @@ foreach ($svc in $telemetryServices) {
         if ($service) {
             Stop-Service -Name $svc.Name -Force -ErrorAction SilentlyContinue
             Set-Service -Name $svc.Name -StartupType Disabled -ErrorAction SilentlyContinue
-            Write-Log "Вимкнено: $($svc.DisplayName)" -Level Success
+            Write-Log "Disabled: $($svc.DisplayName)" -Level Success
         }
     } catch {
-        Write-Log "Не вдалося вимкнути: $($svc.Name)" -Level Warning
+        Write-Log "Failed to disable: $($svc.Name)" -Level Warning
     }
 }
 
 # =============================================================================
 # Scheduled Tasks телеметрії
 # =============================================================================
-Write-Log "Вимкнення задач телеметрії..." -Level Info
+Write-Log "Disabling telemetry tasks..." -Level Info
 
 $telemetryTasks = @(
     "\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser",
@@ -87,7 +87,7 @@ $telemetryTasks = @(
 foreach ($task in $telemetryTasks) {
     try {
         Disable-ScheduledTask -TaskName $task -ErrorAction SilentlyContinue | Out-Null
-        Write-Log "Вимкнено задачу: $(Split-Path $task -Leaf)" -Level Success
+        Write-Log "Disabled task: $(Split-Path $task -Leaf)" -Level Success
     } catch {
         # Task might not exist
     }
@@ -96,10 +96,10 @@ foreach ($task in $telemetryTasks) {
 # =============================================================================
 # Реєстр - Телеметрія
 # =============================================================================
-Write-Log "Налаштування реєстру..." -Level Info
+Write-Log "Configuring registry..." -Level Info
 
 $registrySettings = @(
-    # Вимкнення телеметрії (мінімальний рівень)
+    # Disabling telemetry (minimum level)
     @{
         Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection"
         Name = "AllowTelemetry"
@@ -112,42 +112,42 @@ $registrySettings = @(
         Value = 0
         Type = "DWord"
     },
-    # Вимкнення Advertising ID
+    # Disabling Advertising ID
     @{
         Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo"
         Name = "DisabledByGroupPolicy"
         Value = 1
         Type = "DWord"
     },
-    # Вимкнення feedback notifications
+    # Disabling feedback notifications
     @{
         Path = "HKCU:\SOFTWARE\Microsoft\Siuf\Rules"
         Name = "NumberOfSIUFInPeriod"
         Value = 0
         Type = "DWord"
     },
-    # Вимкнення Wi-Fi Sense
+    # Disabling Wi-Fi Sense
     @{
         Path = "HKLM:\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config"
         Name = "AutoConnectAllowedOEM"
         Value = 0
         Type = "DWord"
     },
-    # Вимкнення Application Telemetry
+    # Disabling Application Telemetry
     @{
         Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat"
         Name = "AITEnable"
         Value = 0
         Type = "DWord"
     },
-    # Вимкнення Inventory Collector
+    # Disabling Inventory Collector
     @{
         Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat"
         Name = "DisableInventory"
         Value = 1
         Type = "DWord"
     },
-    # Вимкнення Steps Recorder
+    # Disabling Steps Recorder
     @{
         Path = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppCompat"
         Name = "DisableUAR"
@@ -162,16 +162,16 @@ foreach ($setting in $registrySettings) {
             New-Item -Path $setting.Path -Force | Out-Null
         }
         Set-ItemProperty -Path $setting.Path -Name $setting.Name -Value $setting.Value -Type $setting.Type -Force
-        Write-Log "Встановлено: $($setting.Path)\$($setting.Name)" -Level Success
+        Write-Log "Set: $($setting.Path)\$($setting.Name)" -Level Success
     } catch {
-        Write-Log "Помилка: $($setting.Path)\$($setting.Name)" -Level Warning
+        Write-Log "Error: $($setting.Path)\$($setting.Name)" -Level Warning
     }
 }
 
 # =============================================================================
-# Hosts file - блокування телеметричних доменів (опціонально)
+# Hosts file - блокування телеметричних доменів (optional)
 # =============================================================================
-Write-Log "Блокування телеметричних доменів..." -Level Info
+Write-Log "Blocking telemetry domains..." -Level Info
 
 $hostsFile = "$env:SystemRoot\System32\drivers\etc\hosts"
 $telemetryDomains = @(
@@ -213,18 +213,18 @@ try {
         foreach ($domain in $telemetryDomains) {
             Add-Content -Path $hostsFile -Value $domain -Force
         }
-        Write-Log "Телеметричні домени заблоковано в hosts" -Level Success
+        Write-Log "Telemetry domains blocked in hosts" -Level Success
     } else {
-        Write-Log "Hosts вже містить блокування телеметрії" -Level Warning
+        Write-Log "Hosts already contains telemetry blocking" -Level Warning
     }
 } catch {
-    Write-Log "Не вдалося модифікувати hosts: $_" -Level Warning
+    Write-Log "Failed to modify hosts: $_" -Level Warning
 }
 
 # =============================================================================
 # Вимкнення Cortana
 # =============================================================================
-Write-Log "Налаштування Cortana..." -Level Info
+Write-Log "Configuring Cortana..." -Level Info
 
 $cortanaSettings = @(
     @{
@@ -254,28 +254,28 @@ foreach ($setting in $cortanaSettings) {
         }
         Set-ItemProperty -Path $setting.Path -Name $setting.Name -Value $setting.Value -Type $setting.Type -Force
     } catch {
-        Write-Log "Помилка Cortana налаштування" -Level Warning
+        Write-Log "Cortana configuration error" -Level Warning
     }
 }
 
-Write-Log "Cortana вимкнено" -Level Success
+Write-Log "Cortana disabled" -Level Success
 
 # =============================================================================
 # Вимкнення OneDrive автозапуску
 # =============================================================================
-Write-Log "Налаштування OneDrive..." -Level Info
+Write-Log "Configuring OneDrive..." -Level Info
 
 try {
     Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\OneDrive" -Name "DisableFileSyncNGSC" -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
-    Write-Log "OneDrive автозапуск вимкнено" -Level Success
+    Write-Log "OneDrive autostart disabled" -Level Success
 } catch {
-    Write-Log "OneDrive налаштування не застосовано" -Level Warning
+    Write-Log "OneDrive settings not applied" -Level Warning
 }
 
 # =============================================================================
 # Privacy налаштування
 # =============================================================================
-Write-Log "Налаштування Privacy..." -Level Info
+Write-Log "Configuring Privacy..." -Level Info
 
 $privacySettings = @(
     # Location
@@ -299,29 +299,29 @@ foreach ($setting in $privacySettings) {
     }
 }
 
-Write-Log "Privacy налаштування застосовано" -Level Success
+Write-Log "Privacy settings applied" -Level Success
 
 # =============================================================================
 # Flush DNS cache
 # =============================================================================
-Write-Log "Очистка DNS кешу..." -Level Info
+Write-Log "Cleanup DNS кешу..." -Level Info
 Clear-DnsClientCache
-Write-Log "DNS кеш очищено" -Level Success
+Write-Log "DNS cache cleared" -Level Success
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
-Write-Host "  Телеметрія налаштована!" -ForegroundColor Green
+Write-Host "  Telemetry configured!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Застосовано:" -ForegroundColor Cyan
-Write-Host "  - Вимкнено служби телеметрії"
-Write-Host "  - Вимкнено задачі збору даних"
-Write-Host "  - Налаштовано реєстр"
-Write-Host "  - Заблоковано телеметричні домени"
-Write-Host "  - Вимкнено Cortana/OneDrive"
+Write-Host "Applied:" -ForegroundColor Cyan
+Write-Host "  - Disabled telemetry services"
+Write-Host "  - Disabled data collection tasks"
+Write-Host "  - Configured registry"
+Write-Host "  - Blocked telemetry domains"
+Write-Host "  - Disabled Cortana/OneDrive"
 Write-Host ""
-Write-Host "ВАЖЛИВО:" -ForegroundColor Yellow
-Write-Host "  - Рекомендується перезавантаження"
-Write-Host "  - Windows Update працює нормально"
-Write-Host "  - Windows Defender працює нормально"
+Write-Host "IMPORTANT:" -ForegroundColor Yellow
+Write-Host "  - Reboot recommended"
+Write-Host "  - Windows Update works normally"
+Write-Host "  - Windows Defender works normally"
 Write-Host ""

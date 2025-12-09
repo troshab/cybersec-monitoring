@@ -43,7 +43,7 @@ Write-Host "============================================================" -Foreg
 Write-Host ""
 
 # =============================================================================
-# Перевірка ролі DC
+# Verification ролі DC
 # =============================================================================
 $dcRole = Get-WmiObject -Class Win32_ComputerSystem | Select-Object -ExpandProperty DomainRole
 if ($dcRole -lt 4) {
@@ -104,7 +104,7 @@ foreach ($policy in $adAuditPolicies) {
     if ($LASTEXITCODE -eq 0) {
         Write-Log "Налаштовано: $($policy.SubCategory)" -Level Success
     } else {
-        Write-Log "Помилка: $($policy.SubCategory)" -Level Warning
+        Write-Log "Error: $($policy.SubCategory)" -Level Warning
     }
 }
 

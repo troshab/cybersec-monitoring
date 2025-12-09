@@ -11,7 +11,7 @@
     .\07-test-log-clearing.ps1
 
 .NOTES
-    Запускати від адміністратора
+    Run as administrator
     УВАГА: Очищає тестовий журнал! НЕ Security log!
 #>
 
@@ -54,7 +54,7 @@ try {
     wevtutil cl Application
     Write-TestLog "Application log очищено (демонстрація механізму)" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 # =============================================================================
@@ -66,7 +66,7 @@ try {
     wevtutil cl "Windows PowerShell"
     Write-TestLog "Windows PowerShell log очищено" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 # =============================================================================
@@ -78,7 +78,7 @@ try {
     wevtutil cl Setup
     Write-TestLog "Setup log очищено" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 # =============================================================================
@@ -134,7 +134,7 @@ Write-Host "============================================================" -Foreg
 Write-Host "  Тест завершено!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Перевірка подій:" -ForegroundColor Cyan
+Write-Host "Verification подій:" -ForegroundColor Cyan
 Write-Host ""
 
 # Check for 1102 events

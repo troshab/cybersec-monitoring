@@ -9,16 +9,16 @@
     3. Sysmon
     4. Grafana Alloy (log collector)
     5. Windows Exporter
-    6. Osquery (опціонально)
+    6. Osquery (optional)
 
 .PARAMETER LokiUrl
     URL сервера Loki (обов'язковий)
 
 .PARAMETER FleetUrl
-    URL FleetDM сервера (опціонально)
+    URL FleetDM сервера (optional)
 
 .PARAMETER FleetEnrollSecret
-    Секрет для FleetDM (опціонально)
+    Секрет для FleetDM (optional)
 
 .PARAMETER SkipSysmon
     Пропустити встановлення Sysmon
@@ -33,7 +33,7 @@
     .\Deploy-Client.ps1 -LokiUrl "http://10.0.1.2:3100" -FleetUrl "https://10.0.1.2:8080" -FleetEnrollSecret "secret"
 
 .NOTES
-    Запускати від адміністратора
+    Run as administrator
     Час виконання: ~5-10 хвилин
 #>
 
@@ -79,7 +79,7 @@ function Write-Banner {
 Clear-Host
 Write-Banner "Windows 11 Client - Security Monitoring Deployment"
 
-Write-Host "Конфігурація:" -ForegroundColor Yellow
+Write-Host "Configuration:" -ForegroundColor Yellow
 Write-Host "  Комп'ютер: $env:COMPUTERNAME"
 Write-Host "  Loki URL: $LokiUrl"
 Write-Host "  FleetDM: $(if($FleetUrl){'Enabled'}else{'Disabled'})"
@@ -103,7 +103,7 @@ try {
     & "$CommonDir\01-Set-AuditPolicy.ps1"
     Write-Log "Audit Policy налаштовано" -Level Success
 } catch {
-    Write-Log "Помилка: $_" -Level Error
+    Write-Log "Error: $_" -Level Error
 }
 
 # =============================================================================
@@ -115,7 +115,7 @@ try {
     & "$CommonDir\02-Enable-PowerShellLogging.ps1"
     Write-Log "PowerShell Logging включено" -Level Success
 } catch {
-    Write-Log "Помилка: $_" -Level Error
+    Write-Log "Error: $_" -Level Error
 }
 
 # =============================================================================
@@ -130,7 +130,7 @@ if ($SkipSysmon) {
         & "$CommonDir\03-Install-Sysmon.ps1"
         Write-Log "Sysmon встановлено" -Level Success
     } catch {
-        Write-Log "Помилка: $_" -Level Error
+        Write-Log "Error: $_" -Level Error
     }
 }
 
@@ -146,9 +146,9 @@ try {
     } else {
         & "$CommonDir\04-Install-Alloy.ps1" -LokiUrl $LokiUrl
     }
-    Write-Log "Grafana Alloy встановлено" -Level Success
+    Write-Log "Grafana Alloy installed" -Level Success
 } catch {
-    Write-Log "Помилка: $_" -Level Error
+    Write-Log "Error: $_" -Level Error
 }
 
 # =============================================================================
@@ -160,7 +160,7 @@ try {
     & "$CommonDir\05-Install-WindowsExporter.ps1"
     Write-Log "Windows Exporter встановлено" -Level Success
 } catch {
-    Write-Log "Помилка: $_" -Level Error
+    Write-Log "Error: $_" -Level Error
 }
 
 # =============================================================================
@@ -178,7 +178,7 @@ if ($SkipOsquery -or -not $FleetUrl) {
             & "$CommonDir\06-Install-OsqueryAgent.ps1" -FleetUrl $FleetUrl -EnrollSecret $FleetEnrollSecret
             Write-Log "Osquery встановлено" -Level Success
         } catch {
-            Write-Log "Помилка: $_" -Level Error
+            Write-Log "Error: $_" -Level Error
         }
     }
 }
@@ -215,8 +215,8 @@ foreach ($svc in $services) {
 }
 
 Write-Host ""
-Write-Host "Перевірка в Grafana:" -ForegroundColor Cyan
+Write-Host "Verification в Grafana:" -ForegroundColor Cyan
 Write-Host "  1. Відкрийте http://<monitoring-server>:3000"
-Write-Host "  2. Перейдіть в Explore → Loki"
+Write-Host "  2. Перейдіть в Explore -> Loki"
 Write-Host "  3. Запит: {host=`"$env:COMPUTERNAME`"}"
 Write-Host ""

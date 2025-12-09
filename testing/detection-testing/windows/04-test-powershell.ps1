@@ -13,7 +13,7 @@
     .\04-test-powershell.ps1
 
 .NOTES
-    Запускати від адміністратора
+    Run as administrator
     Антивірус може заблокувати деякі тести
 #>
 
@@ -172,7 +172,7 @@ try {
     Invoke-Expression $scriptBlock | Out-Null
     Write-TestLog "Script Block виконано (4104)" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 # =============================================================================
@@ -186,7 +186,7 @@ try {
     Get-ChildItem $env:TEMP -ErrorAction SilentlyContinue | Out-Null
     Write-TestLog "Module команди виконано (4103)" -Status Success
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 # =============================================================================
@@ -222,7 +222,7 @@ Write-Host "============================================================" -Foreg
 Write-Host "  Тест завершено!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Перевірка подій:" -ForegroundColor Cyan
+Write-Host "Verification подій:" -ForegroundColor Cyan
 Write-Host ""
 
 # PowerShell Operational Log

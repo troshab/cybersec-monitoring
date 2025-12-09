@@ -13,7 +13,7 @@
     .\03-test-process-execution.ps1
 
 .NOTES
-    Запускати від адміністратора
+    Run as administrator
     Деякі процеси можуть бути заблоковані антивірусом
 #>
 
@@ -54,7 +54,7 @@ foreach ($proc in $basicProcesses) {
         Start-Process -FilePath $proc.Path -ArgumentList $proc.Args -WindowStyle Hidden -Wait
         Write-TestLog "Виконано: $($proc.Path) $($proc.Args)" -Status Success
     } catch {
-        Write-TestLog "Помилка: $_" -Status Warning
+        Write-TestLog "Error: $_" -Status Warning
     }
     Start-Sleep -Milliseconds 500
 }
@@ -75,7 +75,7 @@ foreach ($cmd in $psCommands) {
         Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile", "-Command", $cmd -WindowStyle Hidden -Wait
         Write-TestLog "PowerShell: $cmd" -Status Success
     } catch {
-        Write-TestLog "Помилка: $_" -Status Warning
+        Write-TestLog "Error: $_" -Status Warning
     }
     Start-Sleep -Milliseconds 500
 }
@@ -144,7 +144,7 @@ foreach ($cmd in $suspiciousCommands) {
         Invoke-Expression $cmd.Cmd 2>&1 | Out-Null
         Write-TestLog "Виконано: $($cmd.Desc)" -Status Success
     } catch {
-        Write-TestLog "Помилка: $($cmd.Desc)" -Status Warning
+        Write-TestLog "Error: $($cmd.Desc)" -Status Warning
     }
     Start-Sleep -Milliseconds 300
 }
@@ -189,7 +189,7 @@ try {
     Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile", "-EncodedCommand", $encodedCommand -WindowStyle Hidden -Wait
     Write-TestLog "Base64 команда виконана (SUSPICIOUS!)" -Status Warning
 } catch {
-    Write-TestLog "Помилка: $_" -Status Warning
+    Write-TestLog "Error: $_" -Status Warning
 }
 
 # =============================================================================
@@ -200,7 +200,7 @@ Write-Host "============================================================" -Foreg
 Write-Host "  Тест завершено!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Перевірка подій:" -ForegroundColor Cyan
+Write-Host "Verification подій:" -ForegroundColor Cyan
 Write-Host ""
 
 # Security Log - Event 4688

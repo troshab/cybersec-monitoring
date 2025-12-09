@@ -11,16 +11,16 @@
     5. Windows Exporter
     6. Server Hardening
     7. Role-specific logging (ADDS, DHCP, DNS, File Server, NPS)
-    8. Osquery (опціонально)
+    8. Osquery (optional)
 
 .PARAMETER LokiUrl
     URL сервера Loki (обов'язковий)
 
 .PARAMETER FleetUrl
-    URL FleetDM сервера (опціонально)
+    URL FleetDM сервера (optional)
 
 .PARAMETER FleetEnrollSecret
-    Секрет для FleetDM (опціонально)
+    Секрет для FleetDM (optional)
 
 .PARAMETER SkipSysmon
     Пропустити встановлення Sysmon
@@ -44,7 +44,7 @@
     .\Deploy-Server.ps1 -LokiUrl "http://10.0.1.2:3100" -FleetUrl "https://10.0.1.2:8080" -FleetEnrollSecret "secret"
 
 .NOTES
-    Запускати від адміністратора
+    Run as administrator
     Час виконання: ~10-20 хвилин залежно від ролей
 #>
 
@@ -140,7 +140,7 @@ if (-not $ServerRoles) {
     }
 }
 
-Write-Host "Конфігурація:" -ForegroundColor Yellow
+Write-Host "Configuration:" -ForegroundColor Yellow
 Write-Host "  Сервер: $env:COMPUTERNAME"
 Write-Host "  Loki URL: $LokiUrl"
 Write-Host "  FleetDM: $(if($FleetUrl){'Enabled'}else{'Disabled'})"
@@ -169,7 +169,7 @@ try {
     & "$CommonDir\01-Set-AuditPolicy.ps1"
     Write-Log "Audit Policy налаштовано" -Level Success
 } catch {
-    Write-Log "Помилка: $_" -Level Error
+    Write-Log "Error: $_" -Level Error
 }
 
 # =============================================================================
@@ -182,7 +182,7 @@ try {
     & "$CommonDir\02-Enable-PowerShellLogging.ps1"
     Write-Log "PowerShell Logging включено" -Level Success
 } catch {
-    Write-Log "Помилка: $_" -Level Error
+    Write-Log "Error: $_" -Level Error
 }
 
 # =============================================================================
@@ -198,7 +198,7 @@ if ($SkipSysmon) {
         & "$CommonDir\03-Install-Sysmon.ps1"
         Write-Log "Sysmon встановлено" -Level Success
     } catch {
-        Write-Log "Помилка: $_" -Level Error
+        Write-Log "Error: $_" -Level Error
     }
 }
 
@@ -215,9 +215,9 @@ try {
     } else {
         & "$CommonDir\04-Install-Alloy.ps1" -LokiUrl $LokiUrl
     }
-    Write-Log "Grafana Alloy встановлено" -Level Success
+    Write-Log "Grafana Alloy installed" -Level Success
 } catch {
-    Write-Log "Помилка: $_" -Level Error
+    Write-Log "Error: $_" -Level Error
 }
 
 # =============================================================================
@@ -230,7 +230,7 @@ try {
     & "$CommonDir\05-Install-WindowsExporter.ps1"
     Write-Log "Windows Exporter встановлено" -Level Success
 } catch {
-    Write-Log "Помилка: $_" -Level Error
+    Write-Log "Error: $_" -Level Error
 }
 
 # =============================================================================
@@ -251,7 +251,7 @@ if ($SkipHardening) {
             Write-Log "Скрипт hardening не знайдено" -Level Warning
         }
     } catch {
-        Write-Log "Помилка: $_" -Level Error
+        Write-Log "Error: $_" -Level Error
     }
 }
 
@@ -339,7 +339,7 @@ if ($SkipOsquery -or -not $FleetUrl) {
             & "$CommonDir\06-Install-OsqueryAgent.ps1" -FleetUrl $FleetUrl -EnrollSecret $FleetEnrollSecret
             Write-Log "Osquery встановлено" -Level Success
         } catch {
-            Write-Log "Помилка: $_" -Level Error
+            Write-Log "Error: $_" -Level Error
         }
     }
 }
@@ -382,8 +382,8 @@ foreach ($role in $ServerRoles) {
 }
 
 Write-Host ""
-Write-Host "Перевірка в Grafana:" -ForegroundColor Cyan
+Write-Host "Verification в Grafana:" -ForegroundColor Cyan
 Write-Host "  1. Відкрийте http://<monitoring-server>:3000"
-Write-Host "  2. Перейдіть в Explore → Loki"
+Write-Host "  2. Перейдіть в Explore -> Loki"
 Write-Host "  3. Запит: {host=`"$env:COMPUTERNAME`\", os_type=`"server`\"}"
 Write-Host ""

@@ -7,14 +7,14 @@
     - Accounting logging
     - Authentication logging
     - Event log налаштування
-    - SQL logging (опціонально)
+    - SQL logging (optional)
 
 .EXAMPLE
     .\06-Configure-NPSLogging.ps1
 
 .NOTES
     Запускати на NPS/RADIUS сервері
-    Потребує прав адміністратора
+    Requires administrator rights
 #>
 
 #Requires -RunAsAdministrator
@@ -45,7 +45,7 @@ Write-Host "============================================================" -Foreg
 Write-Host ""
 
 # =============================================================================
-# Перевірка NPS сервісу
+# Verification NPS сервісу
 # =============================================================================
 $npsService = Get-Service -Name IAS -ErrorAction SilentlyContinue
 if (-not $npsService) {
@@ -57,9 +57,9 @@ if (-not $npsService) {
 Write-Log "NPS Server знайдено: $($npsService.Status)" -Level Success
 
 # =============================================================================
-# Створення директорії для логів
+# Creating directory for logs
 # =============================================================================
-Write-Log "Створення директорії для NPS логів..." -Level Info
+Write-Log "Creating directory для NPS логів..." -Level Info
 
 if (-not (Test-Path $LogPath)) {
     New-Item -ItemType Directory -Path $LogPath -Force | Out-Null
@@ -169,7 +169,7 @@ Set-ItemProperty -Path $iasRegPath -Name "LogDelete" -Value 0 -Type DWord -Force
 Write-Log "Формат логів: IAS (щоденні файли)" -Level Success
 
 # =============================================================================
-# SQL Logging (опціонально)
+# SQL Logging (optional)
 # =============================================================================
 if ($EnableSqlLogging) {
     Write-Log "SQL Logging потребує додаткової конфігурації" -Level Warning
@@ -177,9 +177,9 @@ if ($EnableSqlLogging) {
 }
 
 # =============================================================================
-# Перезапуск NPS
+# Restart NPS
 # =============================================================================
-Write-Log "Перезапуск NPS сервісу..." -Level Info
+Write-Log "Restart NPS сервісу..." -Level Info
 
 try {
     Restart-Service -Name IAS -Force

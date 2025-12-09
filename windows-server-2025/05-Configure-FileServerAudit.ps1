@@ -68,7 +68,7 @@ foreach ($policy in $fileAuditPolicies) {
     if ($LASTEXITCODE -eq 0) {
         Write-Log "Налаштовано: $($policy.SubCategory)" -Level Success
     } else {
-        Write-Log "Помилка: $($policy.SubCategory)" -Level Warning
+        Write-Log "Error: $($policy.SubCategory)" -Level Warning
     }
 }
 
@@ -175,7 +175,7 @@ try {
 # =============================================================================
 # SMB Server Audit
 # =============================================================================
-Write-Log "Налаштування SMB Server Audit..." -Level Info
+Write-Log "Configuring SMB Server Audit..." -Level Info
 
 try {
     # Увімкнення SMB аудиту
@@ -204,7 +204,7 @@ if ($fsrmFeature -and $fsrmFeature.Installed) {
         Write-Log "FSRM модуль недоступний" -Level Warning
     }
 } else {
-    Write-Log "FSRM не встановлено (опціонально)" -Level Info
+    Write-Log "FSRM не встановлено (optional)" -Level Info
 }
 
 # =============================================================================
