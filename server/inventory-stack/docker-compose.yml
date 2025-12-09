@@ -7,16 +7,23 @@
 # =============================================================================
 
 # Netdisco common environment variables
-# Ref: https://github.com/netdisco/netdisco/wiki/Environment-Variables
+# Ref: https://docs.docker.com/compose/how-tos/environment-variables/envvars-precedence/
 x-netdisco-env: &netdisco-env
-  NETDISCO_DOMAIN: 'lab.local'
-  NETDISCO_DB_HOST: netdisco-postgresql
-  NETDISCO_DB_USER: netdisco
-  NETDISCO_DB_PASS: ${NETDISCO_DB_PASSWORD:-netdisco_secure_password}
-  # SNMP community strings (comma-separated for multiple)
-  NETDISCO_RO_COMMUNITY: ${SNMP_COMMUNITY:-public}
+  NETDISCO_DOMAIN: '${NETDISCO_DOMAIN:-lab.local}'
+  NETDISCO_DB_TENANT:
+  NETDISCO_DB_NAME:
+  NETDISCO_DB_HOST: '${NETDISCO_DB_HOST:-netdisco-postgresql}'
+  NETDISCO_DB_PORT:
+  NETDISCO_DB_USER:
+  NETDISCO_DB_PASS:
+  NETDISCO_RO_COMMUNITY:
+  PGDATABASE:
+  PGHOST:
+  PGPORT:
+  PGUSER:
+  PGPASSWORD:
   # PostgreSQL version for upgrades (must match installed version)
-  NETDISCO_CURRENT_PG_VERSION: ${NETDISCO_CURRENT_PG_VERSION:-17}
+  NETDISCO_CURRENT_PG_VERSION: '${NETDISCO_CURRENT_PG_VERSION:-18}'
 
 services:
   # ===========================================================================
@@ -28,23 +35,17 @@ services:
   # Ref: https://github.com/netdisco/netdisco-docker
   # ---------------------------------------------------------------------------
   netdisco-postgresql:
-    image: netdisco/netdisco:latest-postgresql
     container_name: netdisco-postgresql
+    image: netdisco/netdisco:latest-postgresql
+    shm_size: 128mb
     hostname: netdisco-postgresql
     restart: unless-stopped
-    # Shared memory for PostgreSQL - required for proper operation
-    shm_size: 128mb
+    # !! healthcheck is defined in the Dockerfile
     volumes:
-      # Official path for PostgreSQL data
-      - ./netdisco/pgdata:/var/lib/postgresql
+      - "./netdisco/postgresql:/var/lib/postgresql"
     environment:
       <<: *netdisco-env
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U netdisco -d netdisco || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
+      NETDISCO_DB_SUPERUSER:
     networks:
       - inventory
 
@@ -53,9 +54,8 @@ services:
   # Ref: https://github.com/netdisco/netdisco-docker
   # ---------------------------------------------------------------------------
   netdisco-db-init:
-    image: netdisco/netdisco:latest-backend
     container_name: netdisco-db-init
-    # Override entrypoint to run DB initialization
+    image: netdisco/netdisco:latest-backend
     entrypoint: ''
     command: "/home/netdisco/bin/netdisco-env /home/netdisco/bin/netdisco-updatedb.sh"
     user: postgres
@@ -63,16 +63,16 @@ services:
       netdisco-postgresql:
         condition: service_healthy
     volumes:
-      # Volume for PostgreSQL upgrade path (same as postgresql service)
-      - ./netdisco/pgdata:/var/lib/pgversions/new
+      # Volume for PostgreSQL 13 upgrade path (legacy)
+      - "./netdisco/pgdata:/var/lib/pgversions/pg13"
+      # Volume for current PostgreSQL
+      - "./netdisco/postgresql:/var/lib/pgversions/new"
       # Configuration directory (deployment.yml location)
-      - ./netdisco/config:/home/netdisco/environments
+      - "./netdisco/config:/home/netdisco/environments"
     environment:
       <<: *netdisco-env
-      # Deploy admin user on first run
-      DEPLOY_ADMIN_USER: 'YES'
+      DEPLOY_ADMIN_USER: '${DEPLOY_ADMIN_USER:-YES}'
       NETDISCO_ADMIN_USER: ${NETDISCO_ADMIN_USER:-monadmin}
-      NETDISCO_ADMIN_PASS: ${NETDISCO_ADMIN_PASS:-}
     networks:
       - inventory
 
@@ -135,10 +135,8 @@ services:
       - ./netdisco/logs:/home/netdisco/logs
     environment:
       <<: *netdisco-env
-      # IPv4 only (set to '6' for IPv6, or remove for both)
-      IPV: '4'
-      # Use deployment configuration
-      DANCER_ENVIRONMENT: deployment
+      IPV: '${IPV:-4}'
+      PORT:
     # DNS options to prevent delays
     dns_opt:
       - 'ndots:0'
@@ -212,7 +210,7 @@ services:
       - "${FLEET_PORT:-8080}:8080"
     volumes:
       - ./fleetdm/certs:/certs:ro
-      - fleet-logs:/logs
+      - ./fleetdm/logs:/logs
     environment:
       FLEET_MYSQL_ADDRESS: fleet-mysql:3306
       FLEET_MYSQL_DATABASE: fleet
@@ -236,8 +234,6 @@ services:
 # =============================================================================
 volumes:
   fleet-mysql-data:
-    driver: local
-  fleet-logs:
     driver: local
 
 # =============================================================================
