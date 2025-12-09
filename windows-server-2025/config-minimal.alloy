@@ -1,0 +1,60 @@
+// Minimal Alloy configuration for Windows Server
+// Only uses standard event logs that exist on all Windows systems
+
+loki.write "default" {
+  endpoint {
+    url = "http://10.0.1.2:3100/loki/api/v1/push"
+  }
+}
+
+loki.source.windowsevent "security" {
+  eventlog_name = "Security"
+  xpath_query   = "*"
+  labels = {
+    job       = "windows_security",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "security",
+    severity  = "high",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.source.windowsevent "system" {
+  eventlog_name = "System"
+  xpath_query   = "*"
+  labels = {
+    job       = "windows_system",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "system",
+    severity  = "medium",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.source.windowsevent "application" {
+  eventlog_name = "Application"
+  xpath_query   = "*"
+  labels = {
+    job       = "windows_application",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "application",
+    severity  = "low",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.source.windowsevent "powershell" {
+  eventlog_name = "Microsoft-Windows-PowerShell/Operational"
+  xpath_query   = "Event[System[(EventID=4103 or EventID=4104)]]"
+  labels = {
+    job       = "windows_powershell",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "powershell",
+    severity  = "critical",
+  }
+  forward_to = [loki.write.default.receiver]
+}
