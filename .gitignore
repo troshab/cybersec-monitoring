@@ -6,6 +6,9 @@ course.txt
 
 # Environment files with secrets (except .env which is demo for lab)
 # .env - KEPT for demo purposes
+# Symlinks to root .env in subdirectories
+server/monitoring-stack/.env
+server/inventory-stack/.env
 .env.local
 .env.*.local
 .env.production
