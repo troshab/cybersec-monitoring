@@ -26,43 +26,23 @@ community:
 # -----------------------------------------------------------------------------
 # For fine-grained control over which communities are tried for which devices
 # Ref: https://github.com/netdisco/netdisco/wiki/Configuration#device_auth
-device_auth:
-  # Default SNMPv2c read-only access
-  - tag: 'default_v2_readonly'
-    community: 'public'
-    read: true
-    write: false
-
-  # Add more communities with device restrictions if needed:
-  # - tag: 'datacenter_devices'
-  #   community: 'dc_secret'
-  #   read: true
-  #   only:
-  #     - '10.0.1.0/24'
-
-  # SNMPv3 example (uncomment and configure if needed):
-  # - tag: 'snmpv3_auth'
-  #   user: 'netdisco'
-  #   auth:
-  #     pass: 'authpassword'
-  #     proto: 'SHA'
-  #   priv:
-  #     pass: 'privpassword'
-  #     proto: 'AES'
-  #   read: true
-
-# -----------------------------------------------------------------------------
-# SNMP Protocol Settings
-# -----------------------------------------------------------------------------
-# SNMP version to use (1, 2, or 3)
-# Default is 2 (SNMPv2c)
-snmpver: 2
-
-# SNMP timeout in microseconds (default: 3000000 = 3 seconds)
-snmptimeout: 3000000
-
-# Number of retries (default: 2)
-snmpretries: 2
+# device_auth:
+#   # Default SNMPv2c read-only access
+#   - tag: 'default_v2_readonly'
+#     community: 'public'
+#     read: true
+#     write: false
+#
+#   # SNMPv3 example:
+#   - tag: 'snmpv3_auth'
+#     user: 'netdisco'
+#     auth:
+#       pass: 'authpassword'
+#       proto: 'SHA'
+#     priv:
+#       pass: 'privpassword'
+#       proto: 'AES'
+#     read: true
 
 # -----------------------------------------------------------------------------
 # Discovery Settings
@@ -76,45 +56,11 @@ discover_phones: false
 # Automatically discover neighbors found via CDP/LLDP
 discover_neighbors: true
 
-# Minimum age in seconds between discovery jobs for the same device
-discover_min_age: 0
-
-# Devices/networks to exclude from discovery
-# discover_no:
-#   - '192.168.100.0/24'
-
-# Only discover these devices/networks (leave empty to discover all)
-# discover_only:
-#   - '10.0.1.0/24'
-
-# -----------------------------------------------------------------------------
-# MAC Address Collection (macsuck)
-# -----------------------------------------------------------------------------
-# Minimum age in seconds between macsuck jobs
-macsuck_min_age: 0
-
-# VLANs to skip during MAC collection
-macsuck_no_vlan:
-  - 'fcoe-vsan-4048'
-  - 'token-ring-default'
-
-# Collect MACs from all VLANs (not just access VLANs)
-macsuck_all_vlans: false
-
-# -----------------------------------------------------------------------------
-# ARP Collection (arpnip)
-# -----------------------------------------------------------------------------
-# Minimum age in seconds between arpnip jobs
-arpnip_min_age: 0
-
 # -----------------------------------------------------------------------------
 # Scheduling (Backend Daemon)
 # -----------------------------------------------------------------------------
 # Number of parallel workers for the backend daemon
 workers: 2
-
-# Jobs older than this (in seconds) will be discarded
-jobs_stale_after: 3600
 
 # Scheduled actions
 # Ref: https://github.com/netdisco/netdisco/wiki/Configuration#schedule
@@ -149,9 +95,6 @@ expire_devices: 60
 # Days after which MAC/IP records are deleted (0 = never)
 expire_nodes: 30
 
-# Days after which old device logs are deleted
-expire_device_logs: 30
-
 # -----------------------------------------------------------------------------
 # DNS Settings
 # -----------------------------------------------------------------------------
@@ -167,12 +110,6 @@ dns:
 # Set to false to REQUIRE authentication (recommended for production!)
 no_auth: false
 
-# Trust REMOTE_USER header from reverse proxy
-# trust_remote_user: false
-
-# Trust X-Remote-User header from reverse proxy
-# trust_x_remote_user: false
-
 # -----------------------------------------------------------------------------
 # Timezone
 # -----------------------------------------------------------------------------
@@ -184,40 +121,8 @@ timezone: 'Europe/Kyiv'
 # Log level: debug, info, warning, error
 log: 'info'
 
-# Log format (default shown)
-# logger_format: '[%P] %U %L %m'
-
-# -----------------------------------------------------------------------------
-# Topology
-# -----------------------------------------------------------------------------
-# Store device interconnection information
-store_topology: true
-
-# -----------------------------------------------------------------------------
-# Session Security
-# -----------------------------------------------------------------------------
-# Cookie encryption key (generate with: openssl rand -hex 16)
-# IMPORTANT: Change this for production!
-session_cookie_key: '647f95c39c6c2df1641f4ec3662c4807'
-
 # -----------------------------------------------------------------------------
 # Local Plugins
 # -----------------------------------------------------------------------------
 # Enable loading plugins from nd-site-local directory
 site_local_files: true
-
-# -----------------------------------------------------------------------------
-# Port Control Settings (optional)
-# -----------------------------------------------------------------------------
-# Allow port control (enable/disable ports)
-# portctl_no: []
-# portctl_only: []
-
-# -----------------------------------------------------------------------------
-# Email Notifications (optional)
-# -----------------------------------------------------------------------------
-# mailer:
-#   to: 'admin@company.ua'
-#   from: 'netdisco@company.ua'
-#   host: 'smtp.company.ua'
-#   port: 25
