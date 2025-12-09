@@ -109,6 +109,8 @@ services:
       - ./netdisco/nd-site-local:/home/netdisco/nd-site-local
       - ./netdisco/config:/home/netdisco/environments
       - ./netdisco/logs:/home/netdisco/logs
+      # Mount deployment.yml to Dancer's compile-time config path (fixes session_cookie_key)
+      - ./netdisco/config/deployment.yml:/home/netdisco/perl5/lib/perl5/auto/share/dist/App-Netdisco/environments/deployment.yml:ro
     environment:
       <<: *netdisco-env
       IPV: '4'
