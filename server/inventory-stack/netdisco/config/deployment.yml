@@ -1,126 +1,223 @@
 # =============================================================================
-# Netdisco Configuration
+# Netdisco Configuration (deployment.yml)
 # =============================================================================
 # Автоматична інвентаризація мережевого обладнання
-# Зберігати в: netdisco/config/deployment.yml
+# Ref: https://github.com/netdisco/netdisco/wiki/Configuration
+# Location: netdisco/config/deployment.yml
+# NOTE: Daemons automatically restart when you save changes to this file
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# SNMP Community strings
+# SNMP Community Strings
 # -----------------------------------------------------------------------------
-# Додайте всі community strings що використовуються у вашій мережі
-snmp_comm:
-  - public                    # Стандартний read-only
-  - private                   # Якщо використовується
-  # - your_custom_community   # Ваш власний
+# List of read-only SNMP community strings to try on each device
+# Each is tried in turn, and the working one will be cached in the database
+community:
+  - public
+  - private
+  # - your_custom_community
 
-# SNMPv3 налаштування (якщо використовуєте)
-# snmpv3_user:
-#   - user: snmpuser
-#     auth:
-#       proto: sha
-#       pass: authpassword
-#     priv:
-#       proto: aes
-#       pass: privpassword
+# Write community strings (for port control features)
+# community_rw:
+#   - private
 
 # -----------------------------------------------------------------------------
-# Версії SNMP для спроб підключення
+# Device Authentication (SNMPv3 and advanced SNMP config)
 # -----------------------------------------------------------------------------
-snmpver:
-  - 2                         # SNMPv2c (рекомендовано)
-  - 1                         # SNMPv1 (fallback)
-  # - 3                       # SNMPv3 (якщо налаштовано вище)
+# For fine-grained control over which communities are tried for which devices
+# Ref: https://github.com/netdisco/netdisco/wiki/Configuration#device_auth
+device_auth:
+  # Default SNMPv2c read-only access
+  - tag: 'default_v2_readonly'
+    community: 'public'
+    read: true
+    write: false
+
+  # Add more communities with device restrictions if needed:
+  # - tag: 'datacenter_devices'
+  #   community: 'dc_secret'
+  #   read: true
+  #   only:
+  #     - '10.0.1.0/24'
+
+  # SNMPv3 example (uncomment and configure if needed):
+  # - tag: 'snmpv3_auth'
+  #   user: 'netdisco'
+  #   auth:
+  #     pass: 'authpassword'
+  #     proto: 'SHA'
+  #   priv:
+  #     pass: 'privpassword'
+  #     proto: 'AES'
+  #   read: true
 
 # -----------------------------------------------------------------------------
-# Мережі для сканування
+# SNMP Protocol Settings
 # -----------------------------------------------------------------------------
-# Lab network: 10.0.1.0/24
-# - 10.0.1.2 - Debian 13 (monitoring server)
-# - 10.0.1.3 - Windows Server 2025
-# - 10.0.1.4 - Windows 11 Client
-discover_nets:
-  - '10.0.1.0/24'             # Lab network
+# SNMP version to use (1, 2, or 3)
+# Default is 2 (SNMPv2c)
+snmpver: 2
 
-# Для великих мереж можна додати інші підмережі:
-# discover_nets:
+# SNMP timeout in microseconds (default: 3000000 = 3 seconds)
+snmptimeout: 3000000
+
+# Number of retries (default: 2)
+snmpretries: 2
+
+# -----------------------------------------------------------------------------
+# Discovery Settings
+# -----------------------------------------------------------------------------
+# Discover wireless access points
+discover_waps: true
+
+# Discover VoIP phones
+discover_phones: false
+
+# Automatically discover neighbors found via CDP/LLDP
+discover_neighbors: true
+
+# Minimum age in seconds between discovery jobs for the same device
+discover_min_age: 0
+
+# Devices/networks to exclude from discovery
+# discover_no:
+#   - '192.168.100.0/24'
+
+# Only discover these devices/networks (leave empty to discover all)
+# discover_only:
 #   - '10.0.1.0/24'
-#   - '10.0.2.0/24'
-#   - '192.168.0.0/16'
-
-# Мережі що НЕ сканувати
-# discover_nets_no:
-#   - '192.168.100.0/24'      # DMZ або інші виключення
 
 # -----------------------------------------------------------------------------
-# Безпека
+# MAC Address Collection (macsuck)
 # -----------------------------------------------------------------------------
-# Вимкнути гостьовий доступ (ОБОВ'ЯЗКОВО для продакшену!)
+# Minimum age in seconds between macsuck jobs
+macsuck_min_age: 0
+
+# VLANs to skip during MAC collection
+macsuck_no_vlan:
+  - 'fcoe-vsan-4048'
+  - 'token-ring-default'
+
+# Collect MACs from all VLANs (not just access VLANs)
+macsuck_all_vlans: false
+
+# -----------------------------------------------------------------------------
+# ARP Collection (arpnip)
+# -----------------------------------------------------------------------------
+# Minimum age in seconds between arpnip jobs
+arpnip_min_age: 0
+
+# -----------------------------------------------------------------------------
+# Scheduling (Backend Daemon)
+# -----------------------------------------------------------------------------
+# Number of parallel workers for the backend daemon
+workers: 2
+
+# Jobs older than this (in seconds) will be discarded
+jobs_stale_after: 3600
+
+# Scheduled actions
+# Ref: https://github.com/netdisco/netdisco/wiki/Configuration#schedule
+schedule:
+  # Device discovery every 4 hours
+  - action: discover
+    interval: '4h'
+
+  # MAC address collection every 30 minutes
+  - action: macsuck
+    interval: '30m'
+
+  # ARP table collection every 30 minutes
+  - action: arpnip
+    interval: '30m'
+
+  # NetBIOS name resolution every 12 hours
+  - action: nbtstat
+    interval: '12h'
+
+  # Delete expired data daily at 2 AM
+  - action: expire
+    interval: '1d'
+    at: '02:00'
+
+# -----------------------------------------------------------------------------
+# Data Retention
+# -----------------------------------------------------------------------------
+# Days after which inactive devices are deleted (0 = never)
+expire_devices: 60
+
+# Days after which MAC/IP records are deleted (0 = never)
+expire_nodes: 30
+
+# Days after which old device logs are deleted
+expire_device_logs: 30
+
+# -----------------------------------------------------------------------------
+# DNS Settings
+# -----------------------------------------------------------------------------
+dns:
+  # Maximum concurrent DNS queries
+  max_outstanding: 50
+  # Only perform reverse DNS lookups
+  hosts_only: true
+
+# -----------------------------------------------------------------------------
+# Web Interface Security
+# -----------------------------------------------------------------------------
+# Set to false to REQUIRE authentication (recommended for production!)
 no_auth: false
 
-# Дозволити тільки певні IP для веб-доступу
-# web_allowed_subnets:
-#   - '192.168.1.0/24'
+# Trust REMOTE_USER header from reverse proxy
+# trust_remote_user: false
+
+# Trust X-Remote-User header from reverse proxy
+# trust_x_remote_user: false
 
 # -----------------------------------------------------------------------------
-# Інтервали оновлення (в хвилинах)
-# -----------------------------------------------------------------------------
-discover_interval: 720        # Discovery кожні 12 годин
-macsuck_interval: 60          # MAC-адреси кожну годину
-arpnip_interval: 60           # ARP таблиці кожну годину
-nbtstat_interval: 720         # NetBIOS кожні 12 годин
-
-# -----------------------------------------------------------------------------
-# Часовий пояс
+# Timezone
 # -----------------------------------------------------------------------------
 timezone: 'Europe/Kyiv'
 
 # -----------------------------------------------------------------------------
-# Retention (днів)
+# Logging
 # -----------------------------------------------------------------------------
-expire_devices: 60            # Видаляти неактивні пристрої через 60 днів
-expire_nodes: 30              # Видаляти MAC/IP записи через 30 днів
+# Log level: debug, info, warning, error
+log: 'info'
+
+# Log format (default shown)
+# logger_format: '[%P] %U %L %m'
 
 # -----------------------------------------------------------------------------
-# DNS
+# Topology
 # -----------------------------------------------------------------------------
-dns:
-  max_outstanding: 50         # Максимум паралельних DNS запитів
-  hosts_only: true            # Тільки reverse lookup
-
-# -----------------------------------------------------------------------------
-# Логування
-# -----------------------------------------------------------------------------
-log: /home/netdisco/logs/netdisco.log
-log_level: debug              # debug, info, warn, error
-
-# -----------------------------------------------------------------------------
-# Модулі пристроїв (автовизначення)
-# -----------------------------------------------------------------------------
-# Netdisco автоматично визначає тип пристрою по OID
-# Можна додати кастомні mapping:
-# device_type:
-#   '192.168.1.1': force10    # Примусово вказати тип
-
-# -----------------------------------------------------------------------------
-# Топологія
-# -----------------------------------------------------------------------------
-# Зберігати інформацію про з'єднання між пристроями
+# Store device interconnection information
 store_topology: true
 
 # -----------------------------------------------------------------------------
-# Session Cookie Key
+# Session Security
 # -----------------------------------------------------------------------------
-# Ключ для шифрування session cookies (32 символи)
-# Автоматично генерується при ініціалізації бази даних
-session_cookie_key: '8809574a7064889d9e7baf92454f8198'
+# Cookie encryption key (generate with: openssl rand -hex 16)
+# IMPORTANT: Change this for production!
+session_cookie_key: '647f95c39c6c2df1641f4ec3662c4807'
 
 # -----------------------------------------------------------------------------
-# Сповіщення (опціонально)
+# Local Plugins
 # -----------------------------------------------------------------------------
-# Можна налаштувати email сповіщення про нові пристрої:
+# Enable loading plugins from nd-site-local directory
+site_local_files: true
+
+# -----------------------------------------------------------------------------
+# Port Control Settings (optional)
+# -----------------------------------------------------------------------------
+# Allow port control (enable/disable ports)
+# portctl_no: []
+# portctl_only: []
+
+# -----------------------------------------------------------------------------
+# Email Notifications (optional)
+# -----------------------------------------------------------------------------
 # mailer:
-#   to: admin@company.ua
-#   from: netdisco@company.ua
-#   host: smtp.company.ua
+#   to: 'admin@company.ua'
+#   from: 'netdisco@company.ua'
+#   host: 'smtp.company.ua'
 #   port: 25
