@@ -167,7 +167,9 @@ install_dependencies() {
     case $DISTRO in
         ubuntu|debian|kali)
             apt-get update
-            apt-get install -y curl wget unzip jq auditd audispd-plugins gpg apt-transport-https software-properties-common
+            apt-get install -y curl wget unzip jq auditd audispd-plugins gpg apt-transport-https
+            # software-properties-common не потрібен на Debian 13+
+            apt-get install -y software-properties-common 2>/dev/null || true
             ;;
         rhel|centos|rocky|almalinux|fedora)
             if command -v dnf &> /dev/null; then
@@ -605,11 +607,14 @@ main() {
     echo "  Auditd: $(if [ "$SKIP_AUDITD" = true ]; then echo "Skip"; else echo "Configure"; fi)"
     echo ""
 
-    read -p "Continue? (y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        log_warning "Cancelled by user"
-        exit 0
+    # Interactive prompt (skip if running non-interactively)
+    if [ -t 0 ]; then
+        read -p "Continue? (y/n) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_warning "Cancelled by user"
+            exit 0
+        fi
     fi
 
     detect_distro
