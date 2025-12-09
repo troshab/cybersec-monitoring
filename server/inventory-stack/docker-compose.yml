@@ -12,7 +12,7 @@ x-netdisco-env: &netdisco-env
   NETDISCO_DB_USER: netdisco
   NETDISCO_DB_PASS: ${NETDISCO_DB_PASSWORD:-netdisco_secure_password}
   NETDISCO_RO_COMMUNITY: ${SNMP_COMMUNITY:-public}
-  NETDISCO_CURRENT_PG_VERSION: '18'
+  NETDISCO_CURRENT_PG_VERSION: ${NETDISCO_CURRENT_PG_VERSION:-18}
 
 services:
   # ===========================================================================
