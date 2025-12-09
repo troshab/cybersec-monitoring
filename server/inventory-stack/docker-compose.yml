@@ -81,6 +81,8 @@ services:
       - ./netdisco/nd-site-local:/home/netdisco/nd-site-local
       - ./netdisco/config:/home/netdisco/environments
       - ./netdisco/logs:/home/netdisco/logs
+      # Mount deployment.yml to the ACTUAL Dancer environments folder
+      - ./netdisco/config/deployment.yml:/home/netdisco/perl5/lib/perl5/auto/share/dist/App-Netdisco/environments/deployment.yml:ro
     environment:
       <<: *netdisco-env
     dns_opt:
@@ -111,6 +113,8 @@ services:
       - ./netdisco/nd-site-local:/home/netdisco/nd-site-local
       - ./netdisco/config:/home/netdisco/environments
       - ./netdisco/logs:/home/netdisco/logs
+      # Mount deployment.yml to the ACTUAL Dancer environments folder
+      - ./netdisco/config/deployment.yml:/home/netdisco/perl5/lib/perl5/auto/share/dist/App-Netdisco/environments/deployment.yml:ro
     environment:
       <<: *netdisco-env
       IPV: '4'
