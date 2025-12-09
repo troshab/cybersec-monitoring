@@ -1,0 +1,320 @@
+# Grafana Alert Rules for Windows Security Events
+# Provisioning file for critical security alerts
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: Windows Security Critical
+    folder: Security Alerts
+    interval: 1m
+    rules:
+      # Alert 1: Audit Log Cleared (Event ID 1102)
+      # КРИТИЧНО: Зловмисники часто очищають логи щоб приховати сліди
+      - uid: audit-log-cleared-1102
+        title: "CRITICAL: Audit Log Cleared (1102)"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="windows_policy"} |= "1102" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "Security audit log was cleared on a Windows system"
+          description: "Event ID 1102 detected - someone cleared the Security Event Log. This is often done by attackers to hide their tracks. Investigate immediately!"
+          runbook_url: "https://attack.mitre.org/techniques/T1070/001/"
+        labels:
+          severity: critical
+          category: defense_evasion
+          mitre_attack: T1070.001
+
+      # Alert 2: New Admin Created (Event ID 4732)
+      # Додавання користувача до групи Administrators
+      - uid: new-admin-created-4732
+        title: "CRITICAL: New Admin Added (4732)"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="windows_accounts"} |= "4732" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "User added to local security group (likely Administrators)"
+          description: "Event ID 4732 detected - a user was added to a local group. If this is the Administrators group, verify this was authorized. Attackers often create backdoor admin accounts."
+          runbook_url: "https://attack.mitre.org/techniques/T1136/"
+        labels:
+          severity: critical
+          category: persistence
+          mitre_attack: T1136.001
+
+      # Alert 3: New Service Installed (Event ID 7045)
+      # Встановлення нового сервісу - може бути malware
+      - uid: new-service-installed-7045
+        title: "HIGH: New Service Installed (7045)"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="windows_system"} |= "7045" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "New Windows service was installed"
+          description: "Event ID 7045 detected - a new service was installed. Verify this is legitimate software. Attackers use services for persistence (e.g., PsExec creates PSEXESVC)."
+          runbook_url: "https://attack.mitre.org/techniques/T1543/003/"
+        labels:
+          severity: high
+          category: persistence
+          mitre_attack: T1543.003
+
+      # Alert 4: Scheduled Task Created (Event ID 4698)
+      # Створення scheduled task - популярний persistence механізм
+      - uid: scheduled-task-created-4698
+        title: "HIGH: Scheduled Task Created (4698)"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="windows_object_access"} |= "4698" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "New scheduled task was created"
+          description: "Event ID 4698 detected - a scheduled task was created. Attackers use scheduled tasks for persistence and lateral movement. Check the task action and trigger."
+          runbook_url: "https://attack.mitre.org/techniques/T1053/005/"
+        labels:
+          severity: high
+          category: persistence
+          mitre_attack: T1053.005
+
+      # Alert 5: Suspicious PowerShell (Event ID 4104)
+      # Підозріле використання PowerShell
+      - uid: suspicious-powershell-4104
+        title: "CRITICAL: Suspicious PowerShell Detected"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="windows_powershell"} |~ "(?i)encodedcommand|downloadstring|invoke-mimikatz|invoke-expression|bypass|hidden|iex\\s*\\(" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "Suspicious PowerShell activity detected"
+          description: "Potentially malicious PowerShell detected: encoded commands, download cradles, or known attack tools. 93% of attacks use PowerShell. Investigate immediately!"
+          runbook_url: "https://attack.mitre.org/techniques/T1059/001/"
+        labels:
+          severity: critical
+          category: execution
+          mitre_attack: T1059.001
+
+  - orgId: 1
+    name: Windows Security High
+    folder: Security Alerts
+    interval: 5m
+    rules:
+      # Alert 6: Failed Login Spike
+      # Багато невдалих входів - можливий bruteforce
+      - uid: failed-login-spike-4625
+        title: "HIGH: Failed Login Spike (4625)"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              expr: 'count_over_time({job="windows_auth"} |= "4625" [5m])'
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [10]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              type: threshold
+              refId: B
+        noDataState: OK
+        execErrState: Error
+        for: 0m
+        annotations:
+          summary: "High number of failed login attempts detected"
+          description: "More than 10 failed logins in 5 minutes. This could indicate a brute force attack or password spraying. Check the source IPs and targeted accounts."
+          runbook_url: "https://attack.mitre.org/techniques/T1110/"
+        labels:
+          severity: high
+          category: credential_access
+          mitre_attack: T1110

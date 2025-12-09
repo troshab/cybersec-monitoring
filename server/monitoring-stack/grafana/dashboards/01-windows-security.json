@@ -149,7 +149,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_audit\"} |= \"1102\" [$__range])",
+          "expr": "count_over_time({job=\"windows_policy\"} |= \"1102\" [$__range])",
           "refId": "A"
         }
       ],
@@ -504,6 +504,60 @@
         "type": "loki",
         "uid": "loki"
       },
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 32},
+      "id": 14,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "{job=\"windows_persistence\"} |~ \"4698|4699|4700|4701|4702\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Scheduled Tasks (4698-4702)",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 32},
+      "id": 15,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "{job=\"windows_policy\"} |~ \"4703|4704|4705|4719\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Policy & Privilege Changes",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
@@ -520,7 +574,7 @@
         },
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 42},
       "id": 13,
       "options": {
         "cellHeight": "sm",

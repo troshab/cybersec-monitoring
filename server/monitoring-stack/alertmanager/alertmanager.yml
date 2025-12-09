@@ -2,16 +2,20 @@
 # Alertmanager Configuration
 # =============================================================================
 # Cybersec Monitoring Stack
-# Маршрутизація сповіщень на email, Pushover, Telegram
+# Маршрутизація сповіщень на email, Pushover
+#
+# DEMO: Використовується Mailpit (localhost:1025) - всі листи видно на :8025
+# PRODUCTION: Замініть на справжній SMTP сервер
 # =============================================================================
 
 global:
-  # Email налаштування
-  smtp_smarthost: '${SMTP_SMARTHOST:-smtp.gmail.com:587}'
-  smtp_from: '${SMTP_FROM:-monitoring@company.ua}'
-  smtp_auth_username: '${SMTP_AUTH_USERNAME}'
-  smtp_auth_password: '${SMTP_AUTH_PASSWORD}'
-  smtp_require_tls: true
+  # Email налаштування (Mailpit для демо)
+  smtp_smarthost: 'mailpit:1025'
+  smtp_from: 'monitoring@lab.local'
+  smtp_require_tls: false
+  # Для production з автентифікацією розкоментуйте:
+  # smtp_auth_username: '${SMTP_AUTH_USERNAME}'
+  # smtp_auth_password: '${SMTP_AUTH_PASSWORD}'
 
   # Resolve timeout
   resolve_timeout: 5m
@@ -102,7 +106,7 @@ receivers:
   # ---------------------------------------------------------------------------
   - name: 'email-critical'
     email_configs:
-      - to: '${ALERT_EMAIL_TO:-admin@company.ua}'
+      - to: 'admin@lab.local'
         send_resolved: true
         headers:
           Subject: '🔴 CRITICAL: {{ .GroupLabels.alertname }}'
@@ -124,7 +128,7 @@ receivers:
   # ---------------------------------------------------------------------------
   - name: 'email-high'
     email_configs:
-      - to: '${ALERT_EMAIL_TO:-admin@company.ua}'
+      - to: 'admin@lab.local'
         send_resolved: true
         headers:
           Subject: '🟠 HIGH: {{ .GroupLabels.alertname }}'
@@ -134,7 +138,7 @@ receivers:
   # ---------------------------------------------------------------------------
   - name: 'email-warning'
     email_configs:
-      - to: '${ALERT_EMAIL_TO:-admin@company.ua}'
+      - to: 'admin@lab.local'
         send_resolved: true
         headers:
           Subject: '🟡 Warning: {{ .GroupLabels.alertname }}'
@@ -144,7 +148,7 @@ receivers:
   # ---------------------------------------------------------------------------
   - name: 'email-infrastructure'
     email_configs:
-      - to: '${ALERT_EMAIL_TO:-admin@company.ua}'
+      - to: 'admin@lab.local'
         send_resolved: true
         headers:
           Subject: '🔧 Infrastructure: {{ .GroupLabels.alertname }}'
@@ -154,7 +158,7 @@ receivers:
   # ---------------------------------------------------------------------------
   - name: 'critical-all-channels'
     email_configs:
-      - to: '${ALERT_EMAIL_TO:-admin@company.ua}'
+      - to: 'admin@lab.local'
         send_resolved: true
         headers:
           Subject: '🚨 CRITICAL SECURITY: {{ .GroupLabels.alertname }}'
@@ -168,19 +172,7 @@ receivers:
     #     message: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
     #     send_resolved: true
 
-    # Telegram - розкоментуйте якщо використовуєте
-    # telegram_configs:
-    #   - bot_token: '${TELEGRAM_BOT_TOKEN}'
-    #     chat_id: ${TELEGRAM_CHAT_ID}
-    #     parse_mode: HTML
-    #     message: |
-    #       🚨 <b>{{ .GroupLabels.alertname }}</b>
-    #       {{ range .Alerts }}
-    #       <b>Instance:</b> {{ .Labels.instance }}
-    #       {{ .Annotations.description }}
-    #       {{ end }}
-
-    # Webhook - для інтеграції з іншими системами
+    # Webhook - для інтеграції з іншими системами (SIEM, ticketing, etc.)
     # webhook_configs:
     #   - url: 'http://your-webhook-endpoint/alert'
     #     send_resolved: true
