@@ -228,7 +228,7 @@ if ($service -and $service.Status -eq "Running") {
     Write-Log "Alloy запущено успішно!" -Level Success
 } else {
     Write-Log "Служба Alloy не запустилась. Перевірте логи." -Level Warning
-    Write-Log "Event Viewer → Application and Services Logs → Alloy" -Level Info
+    Write-Log "Event Viewer -> Application and Services Logs -> Alloy" -Level Info
 }
 
 # =============================================================================

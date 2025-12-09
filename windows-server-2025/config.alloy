@@ -143,20 +143,23 @@ loki.source.windowsevent "powershell" {
 }
 
 // =============================================================================
-// Sysmon Events
+// Sysmon Events (requires Sysmon to be installed)
 // =============================================================================
-loki.source.windowsevent "sysmon" {
-  eventlog_name = "Microsoft-Windows-Sysmon/Operational"
-  xpath_query   = "Event[System[(EventID=1 or EventID=3 or EventID=5 or EventID=7 or EventID=8 or EventID=10 or EventID=11 or EventID=12 or EventID=13 or EventID=15 or EventID=17 or EventID=18 or EventID=22 or EventID=23 or EventID=25)]]"
-  labels = {
-    job       = "windows_sysmon",
-    host      = env("COMPUTERNAME"),
-    os_type   = "windows_server",
-    category  = "sysmon",
-    severity  = "high",
-  }
-  forward_to = [loki.write.default.receiver]
-}
+// NOTE: Uncomment this section after installing Sysmon with:
+// .\03-Install-Sysmon.ps1
+//
+// loki.source.windowsevent "sysmon" {
+//   eventlog_name = "Microsoft-Windows-Sysmon/Operational"
+//   xpath_query   = "Event[System[(EventID=1 or EventID=3 or EventID=5 or EventID=7 or EventID=8 or EventID=10 or EventID=11 or EventID=12 or EventID=13 or EventID=15 or EventID=17 or EventID=18 or EventID=22 or EventID=23 or EventID=25)]]"
+//   labels = {
+//     job       = "windows_sysmon",
+//     host      = env("COMPUTERNAME"),
+//     os_type   = "windows_server",
+//     category  = "sysmon",
+//     severity  = "high",
+//   }
+//   forward_to = [loki.write.default.receiver]
+// }
 
 // =============================================================================
 // Active Directory Events
