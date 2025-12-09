@@ -23,21 +23,25 @@ echo -e "${GREEN}[+] Initializing Inventory Stack...${NC}"
 # Ref: https://github.com/netdisco/netdisco-docker
 # =============================================================================
 echo -e "${YELLOW}[*] Creating Netdisco directories...${NC}"
-# pgdata - PostgreSQL data (official name from netdisco-docker)
+# postgresql - PostgreSQL data (official name from netdisco-docker)
+# pgdata - legacy PostgreSQL 13 data (for upgrade path)
 # config - deployment.yml and other config files
 # logs - daemon logs
 # nd-site-local - custom plugins and templates
-mkdir -p ./netdisco/{pgdata,config,logs,nd-site-local}
+mkdir -p ./netdisco/{postgresql,pgdata,config,logs,nd-site-local}
 # Set ownership to netdisco user (UID 901)
 # Note: This is only required on Linux, not needed on macOS/Windows Docker
 chown -R 901:901 ./netdisco 2>/dev/null || \
     echo "    (chown skipped - run as root on Linux or skip on macOS/Windows)"
 
 # =============================================================================
-# FleetDM certificates
+# FleetDM directories and certificates
 # =============================================================================
 CERT_DIR="./fleetdm/certs"
-mkdir -p "$CERT_DIR"
+LOGS_DIR="./fleetdm/logs"
+mkdir -p "$CERT_DIR" "$LOGS_DIR"
+# FleetDM runs as UID 100 (user fleet in container)
+chmod 777 "$LOGS_DIR" 2>/dev/null || true
 
 if [[ ! -f "$CERT_DIR/fleet.crt" ]] || [[ ! -f "$CERT_DIR/fleet.key" ]]; then
     echo -e "${YELLOW}[*] Generating FleetDM SSL certificates...${NC}"
