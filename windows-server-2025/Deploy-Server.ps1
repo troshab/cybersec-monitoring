@@ -7,7 +7,7 @@
     1. Базовий Audit Policy
     2. PowerShell Logging
     3. Sysmon
-    4. Promtail
+    4. Grafana Alloy (log collector)
     5. Windows Exporter
     6. Server Hardening
     7. Role-specific logging (ADDS, DHCP, DNS, File Server, NPS)
@@ -203,19 +203,19 @@ if ($SkipSysmon) {
 }
 
 # =============================================================================
-# Step 4: Promtail
+# Step 4: Grafana Alloy (replaces deprecated Promtail)
 # =============================================================================
 $currentStep++
-Write-Banner "Step $currentStep/$totalSteps: Promtail Installation"
+Write-Banner "Step $currentStep/$totalSteps: Grafana Alloy Installation"
 
 try {
-    $promtailConfig = Join-Path $ScriptDir "promtail-server.yml"
-    if (Test-Path $promtailConfig) {
-        & "$CommonDir\04-Install-Promtail.ps1" -LokiUrl $LokiUrl -ConfigPath $promtailConfig
+    $alloyConfig = Join-Path $ScriptDir "config.alloy"
+    if (Test-Path $alloyConfig) {
+        & "$CommonDir\04-Install-Alloy.ps1" -LokiUrl $LokiUrl -ConfigPath $alloyConfig
     } else {
-        & "$CommonDir\04-Install-Promtail.ps1" -LokiUrl $LokiUrl
+        & "$CommonDir\04-Install-Alloy.ps1" -LokiUrl $LokiUrl
     }
-    Write-Log "Promtail встановлено" -Level Success
+    Write-Log "Grafana Alloy встановлено" -Level Success
 } catch {
     Write-Log "Помилка: $_" -Level Error
 }
@@ -360,7 +360,7 @@ Write-Host ""
 Write-Host "Встановлені компоненти:" -ForegroundColor Yellow
 
 $services = @(
-    @{Name = "Promtail"; Service = "Promtail"},
+    @{Name = "Grafana Alloy"; Service = "Alloy"},
     @{Name = "Windows Exporter"; Service = "windows_exporter"},
     @{Name = "Sysmon"; Service = "Sysmon64"},
     @{Name = "Osquery"; Service = "osqueryd"}

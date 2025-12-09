@@ -2,6 +2,7 @@
 # Alertmanager Configuration
 # =============================================================================
 # Cybersec Monitoring Stack
+# Alertmanager v0.28+ compatible
 # Маршрутизація сповіщень на email, Pushover
 #
 # DEMO: Використовується Mailpit (localhost:1025) - всі листи видно на :8025
@@ -121,7 +122,7 @@ receivers:
           <p><strong>Severity:</strong> {{ .Labels.severity }}</p>
           {{ end }}
           <hr>
-          <p><a href="http://${MONITORING_SERVER_IP}:3000">Відкрити Grafana</a></p>
+          <p><a href="http://10.0.1.2:3000">Відкрити Grafana</a></p>
 
   # ---------------------------------------------------------------------------
   # Email для high severity

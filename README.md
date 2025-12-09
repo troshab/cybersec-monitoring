@@ -1,6 +1,8 @@
 # Система моніторингу кібербезпеки для малих організацій
 
-Повний набір скриптів та конфігурацій для автоматичного розгортання системи моніторингу кібербезпеки на базі Grafana Stack (Prometheus, Loki, Alertmanager) та інструментів інвентаризації (Netdisco, FleetDM).
+Повний набір скриптів та конфігурацій для автоматичного розгортання системи моніторингу кібербезпеки на базі Grafana Stack (Prometheus 3.x, Loki 3.x, Grafana 12, Alertmanager) та інструментів інвентаризації (Netdisco, FleetDM).
+
+**Stack 2025**: Prometheus 3.0.1, Loki 3.3.2, Grafana 12.3.0, Grafana Alloy 1.x
 
 ## Філософія
 
@@ -36,7 +38,7 @@
 │  └─────────────────────────────────────────────────────────────┘   │
 │                                                                     │
 │  ┌─────────────────────┐                                           │
-│  │ Promtail (native)   │ ← Syslog UDP:514                          │
+│  │ Alloy (native)      │ ← Syslog UDP:514                          │
 │  │ + Node Exporter     │                                           │
 │  └─────────────────────┘                                           │
 └─────────────────────────────────────────────────────────────────────┘
@@ -45,7 +47,7 @@
     ┌──────┴──────┐     ┌──────┴──────┐     ┌──────┴──────┐
     │ Win11 Pro   │     │ Win Server  │     │ Linux       │
     │             │     │ 2025        │     │ Servers     │
-    │ - Promtail  │     │ - Promtail  │     │ - Promtail  │
+    │ - Alloy     │     │ - Alloy     │     │ - Alloy     │
     │ - WinExport │     │ - WinExport │     │ - NodeExport│
     │ - Sysmon    │     │ - Sysmon    │     │             │
     │ - Osquery   │     │ - Osquery   │     │             │
@@ -62,7 +64,7 @@
 | Alertmanager | Маршрутизація сповіщень | Docker |
 | Netdisco | Інвентаризація мережі | Docker |
 | FleetDM | Інвентаризація endpoints | Docker |
-| Promtail | Агент збору логів | Native |
+| Grafana Alloy | Агент збору логів | Native |
 | Node Exporter | Метрики Linux | Native |
 | Windows Exporter | Метрики Windows | Native |
 | Sysmon | Детальний моніторинг Windows | Native |
@@ -148,27 +150,27 @@ cybersec-monitoring/
 │   ├── 01-install.sh         # Головний скрипт встановлення
 │   ├── monitoring-stack/     # Grafana, Prometheus, Loki
 │   ├── inventory-stack/      # Netdisco, FleetDM
-│   └── promtail/             # Self-monitoring
+│   └── alloy/                # Grafana Alloy config (server)
 │
 ├── windows-common/           # Спільні скрипти Windows
 │   ├── 01-Set-AuditPolicy.ps1
 │   ├── 02-Enable-PowerShellLogging.ps1
 │   ├── 03-Install-Sysmon.ps1
-│   ├── 04-Install-Promtail.ps1
+│   ├── 04-Install-Alloy.ps1      # Grafana Alloy (замінює Promtail)
 │   ├── 05-Install-WindowsExporter.ps1
 │   └── 06-Install-OsqueryAgent.ps1
 │
 ├── windows-11-client/        # Для робочих станцій
 │   ├── Deploy-Client.ps1
-│   └── promtail-client.yml
+│   └── config.alloy          # Alloy config для клієнтів
 │
 ├── windows-server-2025/      # Для серверів
 │   ├── Deploy-Server.ps1
-│   └── promtail-server.yml
+│   └── config.alloy          # Alloy config для серверів
 │
 ├── linux-client/             # Для Linux систем
 │   ├── install-agent.sh
-│   └── promtail-linux.yml
+│   └── config.alloy          # Alloy config для Linux
 │
 └── testing/                  # Тести для перевірки моніторингу
     └── detection-testing/    # Об'єднані скрипти по категоріях

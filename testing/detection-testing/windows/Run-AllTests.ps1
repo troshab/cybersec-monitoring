@@ -100,7 +100,9 @@ $testScripts = @(
     @{Number = 3; Name = "Process Execution"; Script = "03-test-process-execution.ps1"},
     @{Number = 4; Name = "PowerShell Events"; Script = "04-test-powershell.ps1"},
     @{Number = 5; Name = "Service Creation"; Script = "05-test-service-creation.ps1"},
-    @{Number = 6; Name = "Scheduled Tasks"; Script = "06-test-scheduled-tasks.ps1"}
+    @{Number = 6; Name = "Scheduled Tasks"; Script = "06-test-scheduled-tasks.ps1"},
+    @{Number = 7; Name = "Log Clearing (1102)"; Script = "07-test-log-clearing.ps1"},
+    @{Number = 8; Name = "Active Directory (5136-5141)"; Script = "08-test-active-directory.ps1"}
 )
 
 $startTime = Get-Date
@@ -182,6 +184,10 @@ $eventSummary = @(
     @{Log = "Security"; Id = 4688; Name = "Process Created"},
     @{Log = "Security"; Id = 4698; Name = "Task Created"},
     @{Log = "Security"; Id = 4697; Name = "Service Installed"},
+    @{Log = "Security"; Id = 1102; Name = "Audit Log Cleared"},
+    @{Log = "Security"; Id = 5136; Name = "AD Object Modified"},
+    @{Log = "Security"; Id = 5137; Name = "AD Object Created"},
+    @{Log = "Security"; Id = 5141; Name = "AD Object Deleted"},
     @{Log = "System"; Id = 7045; Name = "New Service"},
     @{Log = "Microsoft-Windows-PowerShell/Operational"; Id = 4104; Name = "PowerShell Script Block"},
     @{Log = "Microsoft-Windows-Sysmon/Operational"; Id = 1; Name = "Sysmon Process"}

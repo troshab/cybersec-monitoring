@@ -2,6 +2,7 @@
 # Cybersec Monitoring Stack - Docker Compose
 # =============================================================================
 # Prometheus, Loki, Grafana, Alertmanager
+# Stack 2025: Prometheus 3.x, Loki 3.x, Grafana 12.x
 # =============================================================================
 
 services:
@@ -9,7 +10,7 @@ services:
   # Prometheus - Збір метрик
   # ===========================================================================
   prometheus:
-    image: prom/prometheus:v2.48.0
+    image: prom/prometheus:v3.0.1
     container_name: prometheus
     restart: unless-stopped
     user: "65534:65534"
@@ -37,7 +38,7 @@ services:
   # Loki - Зберігання логів
   # ===========================================================================
   loki:
-    image: grafana/loki:2.9.3
+    image: grafana/loki:3.3.2
     container_name: loki
     restart: unless-stopped
     user: "10001:10001"
@@ -59,7 +60,7 @@ services:
   # Grafana - Візуалізація та алерти
   # ===========================================================================
   grafana:
-    image: grafana/grafana:10.2.3
+    image: grafana/grafana:12.3.0
     container_name: grafana
     restart: unless-stopped
     user: "472:472"
@@ -94,7 +95,7 @@ services:
   # Alertmanager - Маршрутизація сповіщень
   # ===========================================================================
   alertmanager:
-    image: prom/alertmanager:v0.26.0
+    image: prom/alertmanager:v0.28.1
     container_name: alertmanager
     restart: unless-stopped
     command:
@@ -124,7 +125,7 @@ services:
   # Для production замініть на справжній SMTP сервер
   # ===========================================================================
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.21.0
     container_name: mailpit
     restart: unless-stopped
     ports:

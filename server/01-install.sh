@@ -420,55 +420,55 @@ deploy_inventory_stack() {
     read -p "Натисніть Enter коли завершите налаштування FleetDM... "
 }
 
-install_promtail() {
-    log_info "Встановлення Promtail..."
+install_alloy() {
+    log_info "Встановлення Grafana Alloy (замінює deprecated Promtail)..."
 
-    # Завантаження
-    local PROMTAIL_VERSION="2.9.3"
-    cd /tmp
-    wget -q "https://github.com/grafana/loki/releases/download/v${PROMTAIL_VERSION}/promtail-linux-amd64.zip"
-    unzip -o promtail-linux-amd64.zip
-    chmod +x promtail-linux-amd64
-    mv promtail-linux-amd64 /usr/local/bin/promtail
+    # Додати Grafana репозиторій
+    apt-get install -y -qq apt-transport-https software-properties-common wget gpg
 
-    # Створення користувача
-    useradd --system --no-create-home --shell /bin/false promtail 2>/dev/null || true
+    mkdir -p /etc/apt/keyrings/
+    wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor > /etc/apt/keyrings/grafana.gpg
+
+    echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | tee /etc/apt/sources.list.d/grafana.list > /dev/null
+
+    apt-get update -qq
+
+    # Встановити Alloy
+    apt-get install -y -qq alloy
 
     # Директорії
-    mkdir -p /etc/promtail /var/lib/promtail
-    chown promtail:promtail /var/lib/promtail
+    mkdir -p /etc/alloy /var/lib/alloy
+    chown -R alloy:alloy /var/lib/alloy
 
     # Конфігурація
-    cp "$SCRIPT_DIR/promtail/promtail-server.yml" /etc/promtail/config.yml
-    envsubst < /etc/promtail/config.yml > /etc/promtail/config.yml.tmp
-    mv /etc/promtail/config.yml.tmp /etc/promtail/config.yml
+    cp "$SCRIPT_DIR/alloy/config.alloy" /etc/alloy/config.alloy
 
-    # Systemd сервіс
-    cat > /etc/systemd/system/promtail.service << 'EOF'
-[Unit]
-Description=Promtail Log Collector
-After=network.target
+    # Override для CAP_NET_BIND_SERVICE (syslog port 514)
+    mkdir -p /etc/systemd/system/alloy.service.d
 
+    cat > /etc/systemd/system/alloy.service.d/override.conf << 'EOF'
 [Service]
-User=promtail
-Group=promtail
-Type=simple
-ExecStart=/usr/local/bin/promtail -config.file=/etc/promtail/config.yml
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
+# Allow binding to privileged ports (UDP 514 for syslog)
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 EOF
 
-    # Права для читання syslog
-    usermod -a -G adm promtail 2>/dev/null || true
+    # Environment config
+    cat > /etc/default/alloy << 'EOF'
+# Grafana Alloy configuration
+ALLOY_CONFIG_FILE=/etc/alloy/config.alloy
+ALLOY_STABILITY_LEVEL=generally-available
+EOF
+
+    # Права для читання логів
+    usermod -a -G adm alloy 2>/dev/null || true
+    usermod -a -G docker alloy 2>/dev/null || true
 
     systemctl daemon-reload
-    systemctl enable promtail
-    systemctl start promtail
+    systemctl enable alloy
+    systemctl start alloy
 
-    log_success "Promtail встановлено"
+    log_success "Grafana Alloy встановлено"
 }
 
 install_node_exporter() {
@@ -574,7 +574,7 @@ main() {
     create_directories
     deploy_monitoring_stack
     deploy_inventory_stack
-    install_promtail
+    install_alloy      # Grafana Alloy (замінює deprecated Promtail)
     install_node_exporter
 
     # Результат

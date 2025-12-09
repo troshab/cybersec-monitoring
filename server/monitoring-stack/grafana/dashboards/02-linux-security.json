@@ -86,7 +86,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"sudo\"} [$__range])",
+          "expr": "count_over_time({job=\"auth\"} |~ \"sudo\" [$__range])",
           "refId": "A"
         }
       ],
@@ -123,7 +123,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"audit\", audit_type=~\"USER_CMD|EXECVE\"} [$__range])",
+          "expr": "count_over_time({job=\"audit\"} |~ \"USER_CMD|EXECVE\" [$__range])",
           "refId": "A"
         }
       ],
@@ -159,7 +159,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"audit\", audit_type=~\"ADD_USER|DEL_USER|USER_MGMT\"} [$__range])",
+          "expr": "count_over_time({job=\"audit\"} |~ \"ADD_USER|DEL_USER|USER_MGMT\" [$__range])",
           "refId": "A"
         }
       ],
@@ -329,8 +329,8 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum by (audit_type) (count_over_time({job=\"audit\"} [$__interval]))",
-          "legendFormat": "{{audit_type}}",
+          "expr": "count_over_time({job=\"audit\"} [$__interval])",
+          "legendFormat": "audit events",
           "refId": "A"
         }
       ],
@@ -378,7 +378,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"sudo\"}",
+          "expr": "{job=\"auth\"} |~ \"sudo\"",
           "refId": "A"
         }
       ],
@@ -402,7 +402,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"audit\", audit_type=~\"USER_CMD|EXECVE\"}",
+          "expr": "{job=\"audit\"} |~ \"USER_CMD|EXECVE\"",
           "refId": "A"
         }
       ],
@@ -426,7 +426,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"audit\", audit_type=~\"ADD_USER|DEL_USER|ADD_GROUP|DEL_GROUP|USER_MGMT|GRP_MGMT\"}",
+          "expr": "{job=\"audit\"} |~ \"ADD_USER|DEL_USER|ADD_GROUP|DEL_GROUP|USER_MGMT|GRP_MGMT\"",
           "refId": "A"
         }
       ],

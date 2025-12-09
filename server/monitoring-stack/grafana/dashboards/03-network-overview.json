@@ -152,7 +152,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\", event_id=\"3\"} |~ \"DestinationPort=(4444|5555|6666|1337|31337)\" [$__range])",
+          "expr": "count_over_time({job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" |~ \"DestinationPort=(4444|5555|6666|1337|31337)\" [$__range])",
           "refId": "A"
         }
       ],
@@ -226,7 +226,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\", event_id=\"22\"} [$__range])",
+          "expr": "count_over_time({job=\"windows_sysmon\"} |~ \"<EventID>22</EventID>\" [$__range])",
           "refId": "A"
         }
       ],
@@ -377,7 +377,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum by (host) (count_over_time({job=\"windows_sysmon\", event_id=\"3\"} [$__interval]))",
+          "expr": "sum by (host) (count_over_time({job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" [$__interval]))",
           "legendFormat": "{{host}}",
           "refId": "A"
         }
@@ -402,7 +402,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_sysmon\", event_id=\"3\"} | json | line_format \"{{.image}} -> {{.destinationIp}}:{{.destinationPort}}\"",
+          "expr": "{job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" | json | line_format \"{{.image}} -> {{.destinationIp}}:{{.destinationPort}}\"",
           "refId": "A"
         }
       ],
@@ -426,7 +426,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_sysmon\", event_id=\"22\"} | json | line_format \"{{.queryName}}\"",
+          "expr": "{job=\"windows_sysmon\"} |~ \"<EventID>22</EventID>\" | json | line_format \"{{.queryName}}\"",
           "refId": "A"
         }
       ],
@@ -495,7 +495,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\", event_id=\"3\"} |~ \"DestinationPort=445\" [$__range])",
+          "expr": "count_over_time({job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" |~ \"DestinationPort=445\" [$__range])",
           "refId": "A"
         }
       ],
@@ -532,7 +532,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\", event_id=\"3\"} |~ \"DestinationPort=3389\" [$__range])",
+          "expr": "count_over_time({job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" |~ \"DestinationPort=3389\" [$__range])",
           "refId": "A"
         }
       ],
@@ -569,7 +569,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\", event_id=\"3\"} |~ \"DestinationPort=(5985|5986)\" [$__range])",
+          "expr": "count_over_time({job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" |~ \"DestinationPort=(5985|5986)\" [$__range])",
           "refId": "A"
         }
       ],
@@ -629,7 +629,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_sysmon\", event_id=\"3\"} |~ \"DestinationPort=(445|3389|5985|5986)\" | json | line_format \"{{.host}}: {{.image}} -> {{.destinationIp}}:{{.destinationPort}}\"",
+          "expr": "{job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" |~ \"DestinationPort=(445|3389|5985|5986)\" | json | line_format \"{{.host}}: {{.image}} -> {{.destinationIp}}:{{.destinationPort}}\"",
           "refId": "A"
         }
       ],

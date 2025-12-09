@@ -465,7 +465,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_sysmon\", event_id=\"1\"} | json | line_format \"{{.image}} {{.commandLine}}\"",
+          "expr": "{job=\"windows_sysmon\"} |~ \"<EventID>1</EventID>\" | json | line_format \"{{.image}} {{.commandLine}}\"",
           "refId": "A"
         }
       ],
