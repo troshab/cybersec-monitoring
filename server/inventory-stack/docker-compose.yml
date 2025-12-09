@@ -114,6 +114,7 @@ services:
     environment:
       <<: *netdisco-env
       IPV: '4'
+      DANCER_ENVIRONMENT: deployment
     dns_opt:
       - 'ndots:0'
       - 'timeout:1'
