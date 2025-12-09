@@ -40,7 +40,6 @@ ingester:
     final_sleep: 0s
   chunk_idle_period: 5m       # Як довго чекати перед flush неактивного chunk
   chunk_retain_period: 30s     # Додатковий час зберігання в пам'яті
-  max_transfer_retries: 0
   wal:
     enabled: true
     dir: /loki/wal
