@@ -119,20 +119,27 @@ scrape_configs:
       severity: critical
 
   # =========================================================================
-  # Security Events - Audit Log Cleared
+  # Security Events - Audit/Policy Changes (Critical for defense evasion detection)
+  # 1100, 1102 - Audit log shutdown/cleared
+  # 4703 - Token right adjusted
+  # 4704, 4705 - User right assigned/removed
+  # 4719 - Audit policy changed
   # =========================================================================
-  - job_name: win11_audit_cleared
+  - job_name: win11_policy
     windows_events:
       use_incoming_timestamp: true
-      bookmark_path: C:\ProgramData\Promtail\audit-bookmark.xml
+      bookmark_path: C:\ProgramData\Promtail\policy-bookmark.xml
       eventlog_name: Security
       xpath_query: |
-        Event[System[(EventID=1100 or EventID=1102)]]
+        Event[System[(
+          EventID=1100 or EventID=1102 or
+          EventID=4703 or EventID=4704 or EventID=4705 or EventID=4719
+        )]]
     labels:
-      job: windows_audit
+      job: windows_policy
       host: ${HOSTNAME}
       os_type: windows11
-      category: audit_tampering
+      category: policy_changes
       severity: critical
 
   # =========================================================================

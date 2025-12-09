@@ -76,8 +76,8 @@ After running tests, verify detection in Grafana:
 # Failed authentication attempts
 {job="windows_auth"} |= "4625"
 
-# Network connections from Kali IP
-{job="windows_sysmon"} |~ "YOUR_KALI_IP"
+# Network connections from Kali IP (10.0.1.5)
+{job="windows_sysmon"} |~ "10.0.1.5"
 
 # New services created
 {job="windows_services"} |= "7045"

@@ -164,11 +164,10 @@ cybersec-monitoring/
 │   ├── install-agent.sh
 │   └── promtail-linux.yml
 │
-├── win-testing/              # Тести для Windows
-│   └── ...                   # PowerShell скрипти
-│
-└── kali-testing/             # Тести з Kali Linux
-    └── ...                   # Bash скрипти
+└── testing/                  # Тести для перевірки моніторингу
+    └── detection-testing/    # Об'єднані скрипти по категоріях
+        ├── windows/          # 6 PowerShell тестів
+        └── kali/             # 7 Bash тестів
 ```
 
 ## Дашборди
@@ -176,13 +175,13 @@ cybersec-monitoring/
 | Дашборд | Призначення |
 |---------|-------------|
 | 00-security-overview | Загальний огляд безпеки |
-| 01-windows-security | Windows Security Events |
+| 01-windows-security | Windows Security Events + PowerShell + Scheduled Tasks |
 | 02-linux-security | Linux Security |
-| 03-lateral-movement | Виявлення руху мережею |
-| 04-powershell-activity | Моніторинг PowerShell |
-| 05-user-management | Зміни користувачів/груп |
-| 06-network-equipment | Логи мережевого обладнання |
-| 07-morning-coffee | Щоденний огляд (15 хв) |
+| 03-network-overview | Мережа + Lateral Movement (SMB/RDP/WinRM) |
+| 04-authentication | Логіни, RDP |
+| 05-alerts-summary | Активні алерти |
+| 06-inventory-status | Інвентаризація хостів |
+| 07-morning-coffee | Щоденний огляд безпеки (15 хв) |
 
 ## Критичні Event IDs
 
@@ -202,24 +201,42 @@ cybersec-monitoring/
 
 ## Тестування
 
-### Windows тести
+Тестові скрипти згруповані по категоріях в `testing/detection-testing/`.
+
+### Windows тести (PowerShell)
 
 ```powershell
-# Запуск всіх тестів
-.\win-testing\Run-AllTests.ps1
+# Перейти в папку тестів
+cd testing\detection-testing\windows
 
-# Тільки певну категорію
-.\win-testing\Run-AllTests.ps1 -Category Auth
+# Запуск тестів аутентифікації
+.\01-Test-Authentication.ps1
+
+# Доступні тести:
+# 01-Test-Authentication.ps1  - Failed logins, privilege escalation
+# 02-Test-UserManagement.ps1  - User/group creation, admin access
+# 03-Test-Persistence.ps1     - Services, scheduled tasks
+# 04-Test-DefenseEvasion.ps1  - Log clearing, policy changes
+# 05-Test-ProcessExecution.ps1 - Suspicious process creation
+# 06-Test-LateralMovement.ps1 - SMB, RDP, WinRM connections
 ```
 
-### Kali тести
+### Kali тести (Bash)
 
 ```bash
-# Налаштування інструментів
-./kali-testing/00-setup-tools.sh
+cd testing/detection-testing/kali
 
-# Запуск всіх тестів
-./kali-testing/run-all-tests.sh
+# Запуск тестів сканування
+./01-test-scanning.sh
+
+# Доступні тести:
+# 01-test-scanning.sh      - Port/network scanning
+# 02-test-bruteforce.sh    - Password attacks
+# 03-test-webattacks.sh    - SQL injection, XSS
+# 04-test-exploitation.sh  - Metasploit framework
+# 05-test-postexploit.sh   - Post-exploitation
+# 06-test-exfiltration.sh  - Data exfiltration
+# 07-test-persistence.sh   - Backdoors, C2
 ```
 
 ## Lab Environment
@@ -229,6 +246,7 @@ cybersec-monitoring/
 | Monitoring Server | 10.0.1.2 | Debian 13 | monadmin / Mon!123admin |
 | Domain Controller | 10.0.1.3 | Windows Server 2025 | LAB\monadmin / Mon!123admin |
 | Windows Client | 10.0.1.4 | Windows 11 | LAB\pc / Mon!123admin |
+| Kali Linux | 10.0.1.5 | Kali 2024.x | kali / kali |
 
 **Domain:** LAB (lab.local)
 
