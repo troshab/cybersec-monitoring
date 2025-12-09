@@ -18,10 +18,14 @@ server/inventory-stack/.env
 **/secrets/
 **/credentials/
 *.pem
-*.key
-*.crt
 *.p12
 *.pfx
+
+# SSL certificates (exclude demo certs for lab)
+*.key
+*.crt
+!server/inventory-stack/fleetdm/certs/*.crt
+!server/inventory-stack/fleetdm/certs/*.key
 
 # Log files
 *.log
