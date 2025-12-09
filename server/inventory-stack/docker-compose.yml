@@ -3,16 +3,20 @@
 # =============================================================================
 # Netdisco (мережева інвентаризація) + FleetDM (endpoints інвентаризація)
 # Stack 2025: MySQL 8.4 LTS, Redis 7.4, FleetDM 4.61
+# Based on: https://github.com/netdisco/netdisco-docker
 # =============================================================================
 
 # Netdisco common environment variables
+# Ref: https://github.com/netdisco/netdisco/wiki/Environment-Variables
 x-netdisco-env: &netdisco-env
   NETDISCO_DOMAIN: 'lab.local'
   NETDISCO_DB_HOST: netdisco-postgresql
   NETDISCO_DB_USER: netdisco
   NETDISCO_DB_PASS: ${NETDISCO_DB_PASSWORD:-netdisco_secure_password}
+  # SNMP community strings (comma-separated for multiple)
   NETDISCO_RO_COMMUNITY: ${SNMP_COMMUNITY:-public}
-  NETDISCO_CURRENT_PG_VERSION: ${NETDISCO_CURRENT_PG_VERSION:-18}
+  # PostgreSQL version for upgrades (must match installed version)
+  NETDISCO_CURRENT_PG_VERSION: ${NETDISCO_CURRENT_PG_VERSION:-17}
 
 services:
   # ===========================================================================
@@ -21,15 +25,18 @@ services:
 
   # ---------------------------------------------------------------------------
   # PostgreSQL для Netdisco (офіційний образ netdisco)
+  # Ref: https://github.com/netdisco/netdisco-docker
   # ---------------------------------------------------------------------------
   netdisco-postgresql:
     image: netdisco/netdisco:latest-postgresql
     container_name: netdisco-postgresql
     hostname: netdisco-postgresql
     restart: unless-stopped
+    # Shared memory for PostgreSQL - required for proper operation
     shm_size: 128mb
     volumes:
-      - ./netdisco/postgresql:/var/lib/postgresql
+      # Official path for PostgreSQL data
+      - ./netdisco/pgdata:/var/lib/postgresql
     environment:
       <<: *netdisco-env
     healthcheck:
@@ -43,10 +50,12 @@ services:
 
   # ---------------------------------------------------------------------------
   # Ініціалізація бази даних Netdisco
+  # Ref: https://github.com/netdisco/netdisco-docker
   # ---------------------------------------------------------------------------
   netdisco-db-init:
     image: netdisco/netdisco:latest-backend
     container_name: netdisco-db-init
+    # Override entrypoint to run DB initialization
     entrypoint: ''
     command: "/home/netdisco/bin/netdisco-env /home/netdisco/bin/netdisco-updatedb.sh"
     user: postgres
@@ -54,33 +63,43 @@ services:
       netdisco-postgresql:
         condition: service_healthy
     volumes:
-      - ./netdisco/postgresql:/var/lib/pgversions/new
+      # Volume for PostgreSQL upgrade path (same as postgresql service)
+      - ./netdisco/pgdata:/var/lib/pgversions/new
+      # Configuration directory (deployment.yml location)
       - ./netdisco/config:/home/netdisco/environments
     environment:
       <<: *netdisco-env
+      # Deploy admin user on first run
       DEPLOY_ADMIN_USER: 'YES'
-      NETDISCO_ADMIN_USER: ${GRAFANA_ADMIN_USER:-monadmin}
+      NETDISCO_ADMIN_USER: ${NETDISCO_ADMIN_USER:-monadmin}
+      NETDISCO_ADMIN_PASS: ${NETDISCO_ADMIN_PASS:-}
     networks:
       - inventory
 
   # ---------------------------------------------------------------------------
-  # Netdisco Backend - збирач даних
+  # Netdisco Backend - збирач даних (poller daemon)
+  # Ref: https://github.com/netdisco/netdisco-docker
   # ---------------------------------------------------------------------------
   netdisco-backend:
     image: netdisco/netdisco:latest-backend
     container_name: netdisco-backend
     hostname: netdisco-backend
     restart: unless-stopped
+    # Use init process for proper signal handling
     init: true
     depends_on:
       netdisco-db-init:
         condition: service_completed_successfully
     volumes:
+      # Local plugins and customizations
       - ./netdisco/nd-site-local:/home/netdisco/nd-site-local
+      # Configuration (deployment.yml)
       - ./netdisco/config:/home/netdisco/environments
+      # Logs directory
       - ./netdisco/logs:/home/netdisco/logs
     environment:
       <<: *netdisco-env
+    # DNS options to prevent delays in device discovery
     dns_opt:
       - 'ndots:0'
       - 'timeout:1'
@@ -93,12 +112,14 @@ services:
 
   # ---------------------------------------------------------------------------
   # Netdisco Web - інтерфейс
+  # Ref: https://github.com/netdisco/netdisco-docker
   # ---------------------------------------------------------------------------
   netdisco-web:
     image: netdisco/netdisco:latest-web
     container_name: netdisco-web
     hostname: netdisco-web
     restart: unless-stopped
+    # Use init process for proper signal handling
     init: true
     depends_on:
       netdisco-db-init:
@@ -106,15 +127,19 @@ services:
     ports:
       - "${NETDISCO_PORT:-5000}:5000"
     volumes:
+      # Local plugins and customizations
       - ./netdisco/nd-site-local:/home/netdisco/nd-site-local
+      # Configuration (deployment.yml)
       - ./netdisco/config:/home/netdisco/environments
+      # Logs directory
       - ./netdisco/logs:/home/netdisco/logs
-      # Mount deployment.yml directly to where Dancer looks for configs
-      - ./netdisco/config/deployment.yml:/home/netdisco/perl5/lib/perl5/auto/share/dist/App-Netdisco/environments/deployment.yml:ro
     environment:
       <<: *netdisco-env
+      # IPv4 only (set to '6' for IPv6, or remove for both)
       IPV: '4'
+      # Use deployment configuration
       DANCER_ENVIRONMENT: deployment
+    # DNS options to prevent delays
     dns_opt:
       - 'ndots:0'
       - 'timeout:1'

@@ -20,11 +20,18 @@ echo -e "${GREEN}[+] Initializing Inventory Stack...${NC}"
 
 # =============================================================================
 # Netdisco directories (UID 901 = netdisco user in container)
+# Ref: https://github.com/netdisco/netdisco-docker
 # =============================================================================
 echo -e "${YELLOW}[*] Creating Netdisco directories...${NC}"
-mkdir -p ./netdisco/{postgresql,config,logs,nd-site-local}
-chown -R 901:901 ./netdisco/logs ./netdisco/config ./netdisco/nd-site-local 2>/dev/null || \
-    echo "    (chown skipped - run as root on Linux)"
+# pgdata - PostgreSQL data (official name from netdisco-docker)
+# config - deployment.yml and other config files
+# logs - daemon logs
+# nd-site-local - custom plugins and templates
+mkdir -p ./netdisco/{pgdata,config,logs,nd-site-local}
+# Set ownership to netdisco user (UID 901)
+# Note: This is only required on Linux, not needed on macOS/Windows Docker
+chown -R 901:901 ./netdisco 2>/dev/null || \
+    echo "    (chown skipped - run as root on Linux or skip on macOS/Windows)"
 
 # =============================================================================
 # FleetDM certificates
