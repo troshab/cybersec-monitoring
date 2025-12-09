@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Налаштування логування Network Policy Server (RADIUS).
 

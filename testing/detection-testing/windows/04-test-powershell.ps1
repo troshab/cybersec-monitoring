@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Тестування подій PowerShell (Events 4103, 4104).
 

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Базове захищення (hardening) Windows Server 2025.
 

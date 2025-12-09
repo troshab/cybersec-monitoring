@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Налаштування розширеного аудиту Active Directory Domain Services.
 
