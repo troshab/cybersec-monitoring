@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Тестування подій Active Directory (Events 5136-5141).
 

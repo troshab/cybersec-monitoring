@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Встановлення Grafana Alloy для збору логів Windows.
 

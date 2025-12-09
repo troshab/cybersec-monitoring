@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Collect forensic evidence for CERT-UA submission.
 

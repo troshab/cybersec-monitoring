@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Тестування подій Scheduled Tasks (Events 4698-4702).
 

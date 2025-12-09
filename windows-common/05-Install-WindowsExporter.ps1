@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Встановлення Windows Exporter для Prometheus.
 

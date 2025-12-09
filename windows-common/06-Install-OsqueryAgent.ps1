@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Встановлення osquery агента для FleetDM.
 

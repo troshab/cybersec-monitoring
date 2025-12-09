@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Базове захищення (hardening) Windows 11 клієнта.
 
