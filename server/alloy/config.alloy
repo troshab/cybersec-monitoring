@@ -1,0 +1,170 @@
+// Grafana Alloy Configuration for Cybersec Monitoring
+// Replaces deprecated Promtail for log collection
+
+// =============================================================================
+// LOGGING CONFIGURATION
+// =============================================================================
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// =============================================================================
+// LOKI DESTINATION
+// =============================================================================
+
+loki.write "default" {
+  endpoint {
+    url = "http://localhost:3100/loki/api/v1/push"
+  }
+}
+
+// =============================================================================
+// LOCAL SYSTEM LOGS (JOURNAL)
+// =============================================================================
+
+loki.source.journal "system" {
+  forward_to = [loki.process.system_logs.receiver]
+  labels     = {
+    job      = "systemd-journal"
+    instance = constants.hostname
+  }
+}
+
+loki.process "system_logs" {
+  forward_to = [loki.write.default.receiver]
+
+  stage.static_labels {
+    values = {
+      source = "journal"
+    }
+  }
+}
+
+// =============================================================================
+// SYSLOG RECEIVER (UDP 514)
+// Network devices, firewalls, etc.
+// =============================================================================
+
+loki.source.syslog "network_devices" {
+  listener {
+    address  = "0.0.0.0:514"
+    protocol = "udp"
+    labels   = {
+      job = "syslog"
+    }
+  }
+  forward_to = [loki.process.syslog_logs.receiver]
+}
+
+loki.process "syslog_logs" {
+  forward_to = [loki.write.default.receiver]
+
+  // Parse syslog format
+  stage.regex {
+    expression = "^<(?P<priority>\\d+)>(?P<timestamp>\\w+\\s+\\d+\\s+\\d+:\\d+:\\d+)\\s+(?P<hostname>\\S+)\\s+(?P<app>\\S+?)(?:\\[(?P<pid>\\d+)\\])?:\\s*(?P<message>.*)$"
+  }
+
+  stage.labels {
+    values = {
+      hostname = ""
+      app      = ""
+    }
+  }
+
+  stage.static_labels {
+    values = {
+      source = "syslog"
+    }
+  }
+}
+
+// =============================================================================
+// FILE-BASED LOG COLLECTION
+// Auth logs, application logs, etc.
+// =============================================================================
+
+local.file_match "auth_logs" {
+  path_targets = [
+    {__path__ = "/var/log/auth.log", job = "auth"},
+    {__path__ = "/var/log/secure", job = "auth"},
+  ]
+}
+
+loki.source.file "auth_logs" {
+  targets    = local.file_match.auth_logs.targets
+  forward_to = [loki.process.file_logs.receiver]
+}
+
+local.file_match "system_files" {
+  path_targets = [
+    {__path__ = "/var/log/syslog", job = "syslog-file"},
+    {__path__ = "/var/log/messages", job = "messages"},
+    {__path__ = "/var/log/kern.log", job = "kernel"},
+  ]
+}
+
+loki.source.file "system_files" {
+  targets    = local.file_match.system_files.targets
+  forward_to = [loki.process.file_logs.receiver]
+}
+
+loki.process "file_logs" {
+  forward_to = [loki.write.default.receiver]
+
+  stage.static_labels {
+    values = {
+      source   = "file"
+      instance = constants.hostname
+    }
+  }
+}
+
+// =============================================================================
+// DOCKER CONTAINER LOGS
+// =============================================================================
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "docker_containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    target_label  = "container"
+    regex         = "/(.*)"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "compose_project"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "compose_service"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.docker_containers.output
+  forward_to = [loki.process.docker_logs.receiver]
+  labels     = {
+    job = "docker"
+  }
+}
+
+loki.process "docker_logs" {
+  forward_to = [loki.write.default.receiver]
+
+  stage.static_labels {
+    values = {
+      source   = "docker"
+      instance = constants.hostname
+    }
+  }
+}
