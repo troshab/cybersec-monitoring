@@ -1,17 +1,17 @@
 <#
 .SYNOPSIS
-    Download and setup KAPE for incident response.
+    Download and install KAPE for incident response.
 
 .DESCRIPTION
-    Downloads KAPE (Kroll Artifact Parser and Extractor) and configures it
-    for evidence collection. KAPE is the industry standard for Windows
-    forensic artifact collection.
-
-    KAPE must be downloaded manually from Kroll's website due to licensing.
-    This script prepares the directory structure and provides instructions.
+    Automatically downloads KAPE (Kroll Artifact Parser and Extractor) from
+    Eric Zimmerman's GitHub and configures it for evidence collection.
+    KAPE is the industry standard for Windows forensic artifact collection.
 
 .PARAMETER InstallPath
     Path where to install KAPE (default: C:\Tools\KAPE)
+
+.PARAMETER SkipSync
+    Skip running kape.exe --sync after installation
 
 .EXAMPLE
     .\Install-KAPE.ps1
@@ -20,7 +20,7 @@
     .\Install-KAPE.ps1 -InstallPath "E:\IR-Tools\KAPE"
 
 .NOTES
-    KAPE Download: https://www.kroll.com/kape
+    KAPE by Eric Zimmerman
     Documentation: https://ericzimmerman.github.io/KapeDocs/
 
     For CERT-UA incidents:
@@ -32,17 +32,26 @@
 
 [CmdletBinding()]
 param(
-    [string]$InstallPath = "C:\Tools\KAPE"
+    [string]$InstallPath = "C:\Tools\KAPE",
+    [switch]$SkipSync
 )
 
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
+
+# =============================================================================
+# Configuration
+# =============================================================================
+# Eric Zimmerman's tools download page
+$EZ_TOOLS_URL = "https://raw.githubusercontent.com/EricZimmerman/Get-ZimmermanTools/master/Get-ZimmermanTools.ps1"
+$KAPE_DOWNLOAD_URL = "https://s3.amazonaws.com/cyb-us-prd-kape/kape.zip"
 
 # =============================================================================
 # Banner
 # =============================================================================
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "  KAPE Setup for Incident Response" -ForegroundColor Cyan
+Write-Host "  KAPE Automatic Installation" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -75,23 +84,127 @@ if (Test-Path $kapeExe) {
     Write-Host ""
 
     # Show version
-    $version = & $kapeExe --version 2>&1 | Select-Object -First 1
-    Write-Host "Version: $version" -ForegroundColor Cyan
-    Write-Host ""
+    try {
+        $version = & $kapeExe --version 2>&1 | Select-Object -First 1
+        Write-Host "Version: $version" -ForegroundColor Cyan
+    } catch {
+        Write-Host "Version: Unknown" -ForegroundColor Yellow
+    }
+
+    $reinstall = Read-Host "Reinstall/Update KAPE? (y/n)"
+    if ($reinstall -ne 'y') {
+        Write-Host "Skipping download..." -ForegroundColor Yellow
+        $skipDownload = $true
+    }
 } else {
-    Write-Host "[!] KAPE not found. Manual download required." -ForegroundColor Yellow
+    $skipDownload = $false
+}
+
+# =============================================================================
+# Download KAPE
+# =============================================================================
+if (-not $skipDownload) {
     Write-Host ""
-    Write-Host "KAPE requires manual download due to licensing:" -ForegroundColor White
+    Write-Host "[*] Downloading KAPE..." -ForegroundColor Cyan
+
+    $tempZip = Join-Path $env:TEMP "kape_download.zip"
+
+    try {
+        # Try direct S3 download first (official KAPE distribution)
+        Write-Host "[*] Attempting download from official source..." -ForegroundColor Cyan
+
+        # Use TLS 1.2
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+        # Download KAPE zip
+        Invoke-WebRequest -Uri $KAPE_DOWNLOAD_URL -OutFile $tempZip -UseBasicParsing
+
+        if (Test-Path $tempZip) {
+            $zipSize = (Get-Item $tempZip).Length / 1MB
+            Write-Host "[+] Downloaded: $([math]::Round($zipSize, 2)) MB" -ForegroundColor Green
+
+            # Extract
+            Write-Host "[*] Extracting KAPE..." -ForegroundColor Cyan
+
+            # Remove old files if exist
+            Get-ChildItem $InstallPath -File | Where-Object { $_.Name -like "*.exe" -or $_.Name -like "*.dll" } | Remove-Item -Force -ErrorAction SilentlyContinue
+
+            # Extract to install path
+            Expand-Archive -Path $tempZip -DestinationPath $InstallPath -Force
+
+            # KAPE zip extracts to KAPE subfolder, move files up if needed
+            $kapeSubfolder = Join-Path $InstallPath "KAPE"
+            if (Test-Path $kapeSubfolder) {
+                Get-ChildItem $kapeSubfolder -Recurse | Move-Item -Destination $InstallPath -Force -ErrorAction SilentlyContinue
+                Remove-Item $kapeSubfolder -Recurse -Force -ErrorAction SilentlyContinue
+            }
+
+            # Cleanup
+            Remove-Item $tempZip -Force -ErrorAction SilentlyContinue
+
+            if (Test-Path $kapeExe) {
+                Write-Host "[+] KAPE installed successfully!" -ForegroundColor Green
+            } else {
+                throw "kape.exe not found after extraction"
+            }
+        }
+    }
+    catch {
+        Write-Host "[!] Direct download failed: $_" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "[*] Trying alternative method (Get-ZimmermanTools)..." -ForegroundColor Cyan
+
+        try {
+            # Download Get-ZimmermanTools script
+            $getZTScript = Join-Path $env:TEMP "Get-ZimmermanTools.ps1"
+            Invoke-WebRequest -Uri $EZ_TOOLS_URL -OutFile $getZTScript -UseBasicParsing
+
+            # Run it to download KAPE
+            & $getZTScript -Dest $InstallPath -NetVersion 4.8 -ToolList kape
+
+            Remove-Item $getZTScript -Force -ErrorAction SilentlyContinue
+        }
+        catch {
+            Write-Host "[-] Automatic download failed: $_" -ForegroundColor Red
+            Write-Host ""
+            Write-Host "Manual download required:" -ForegroundColor Yellow
+            Write-Host "  1. Go to: https://www.kroll.com/kape" -ForegroundColor White
+            Write-Host "  2. Or: https://ericzimmerman.github.io/#!index.md" -ForegroundColor White
+            Write-Host "  3. Download KAPE and extract to: $InstallPath" -ForegroundColor White
+            Write-Host ""
+        }
+    }
+}
+
+# =============================================================================
+# Sync targets and modules
+# =============================================================================
+if ((Test-Path $kapeExe) -and (-not $SkipSync)) {
     Write-Host ""
-    Write-Host "  1. Go to: https://www.kroll.com/kape" -ForegroundColor Cyan
-    Write-Host "  2. Fill out the form to download KAPE" -ForegroundColor Cyan
-    Write-Host "  3. Extract to: $InstallPath" -ForegroundColor Cyan
-    Write-Host ""
+    Write-Host "[*] Syncing KAPE targets and modules..." -ForegroundColor Cyan
+    Write-Host "    (This downloads latest detection rules from GitHub)" -ForegroundColor Gray
+
+    try {
+        Push-Location $InstallPath
+        $syncOutput = & $kapeExe --sync 2>&1
+        Pop-Location
+
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "[+] Sync completed!" -ForegroundColor Green
+        } else {
+            Write-Host "[!] Sync had warnings (may still be usable)" -ForegroundColor Yellow
+        }
+    }
+    catch {
+        Write-Host "[!] Sync failed: $_" -ForegroundColor Yellow
+        Write-Host "    You can run 'kape.exe --sync' manually later" -ForegroundColor Gray
+    }
 }
 
 # =============================================================================
 # Create collection scripts
 # =============================================================================
+Write-Host ""
 Write-Host "[*] Creating collection scripts..." -ForegroundColor Cyan
 
 # Quick triage script
@@ -112,7 +225,7 @@ echo Target: %COMPUTERNAME%
 echo Output: %OUTPUT_PATH%
 echo.
 
-"%KAPE_PATH%kape.exe" --tsource C: --tdest "%OUTPUT_PATH%" --target !SANS_Triage --vhdx EVIDENCE --gui
+"%KAPE_PATH%kape.exe" --tsource C: --tdest "%OUTPUT_PATH%" --target !SANS_Triage --vhdx EVIDENCE
 
 echo.
 echo Collection complete!
@@ -146,7 +259,7 @@ echo Estimated time: 30-60 minutes depending on system
 echo.
 pause
 
-"%KAPE_PATH%kape.exe" --tsource C: --tdest "%OUTPUT_PATH%" --target !BasicCollection,!SANS_Triage,RegistryHives,EventLogs,Prefetch,SRUM,Amcache --vhdx EVIDENCE --gui
+"%KAPE_PATH%kape.exe" --tsource C: --tdest "%OUTPUT_PATH%" --target !BasicCollection,!SANS_Triage,RegistryHives,EventLogs,Prefetch,SRUM,Amcache --vhdx EVIDENCE
 
 echo.
 echo Collection complete!
@@ -177,7 +290,7 @@ echo          and may take 15-30 minutes.
 echo.
 pause
 
-"%KAPE_PATH%kape.exe" --tsource C: --tdest "%OUTPUT_PATH%" --target !SANS_Triage --msource C: --mdest "%OUTPUT_PATH%\Modules" --module !EZParser --vhdx EVIDENCE --gui
+"%KAPE_PATH%kape.exe" --tsource C: --tdest "%OUTPUT_PATH%" --target !SANS_Triage --msource C: --mdest "%OUTPUT_PATH%\Modules" --module !EZParser --vhdx EVIDENCE
 
 echo.
 echo Collection complete!
@@ -194,12 +307,6 @@ Write-Host "[+] Created: Collect-WithMemory.bat" -ForegroundColor Green
 # =============================================================================
 $readmeContent = @"
 # KAPE - Kroll Artifact Parser and Extractor
-
-## Installation
-
-1. Download KAPE from: https://www.kroll.com/kape
-2. Extract the contents to this directory
-3. Run `kape.exe --sync` to update targets and modules
 
 ## Collection Scripts
 
@@ -219,20 +326,20 @@ kape.exe --tsource C: --tdest E:\Evidence --target !SANS_Triage --vhdx EVIDENCE
 kape.exe --tsource C: --tdest E:\Evidence --target !BasicCollection,EventLogs,RegistryHives --vhdx EVIDENCE
 ``````
 
-### With module processing:
+### Update targets/modules:
 ``````
-kape.exe --tsource C: --tdest E:\Evidence --target !SANS_Triage --mdest E:\Evidence\Modules --module !EZParser
+kape.exe --sync
 ``````
 
 ## Key Targets
 
-- `!SANS_Triage` - SANS forensic triage collection
-- `!BasicCollection` - Basic artifacts (registry, events, prefetch)
-- `EventLogs` - All Windows Event Logs
-- `RegistryHives` - SAM, SYSTEM, SOFTWARE, SECURITY
-- `Prefetch` - Prefetch files
-- `SRUM` - System Resource Usage Monitor
-- `Amcache` - Application compatibility cache
+- ``!SANS_Triage`` - SANS forensic triage collection
+- ``!BasicCollection`` - Basic artifacts (registry, events, prefetch)
+- ``EventLogs`` - All Windows Event Logs
+- ``RegistryHives`` - SAM, SYSTEM, SOFTWARE, SECURITY
+- ``Prefetch`` - Prefetch files
+- ``SRUM`` - System Resource Usage Monitor
+- ``Amcache`` - Application compatibility cache
 
 ## CERT-UA Contact
 
@@ -251,16 +358,12 @@ $readmeContent | Out-File -FilePath "$InstallPath\README.md" -Encoding UTF8
 Write-Host "[+] Created: README.md" -ForegroundColor Green
 
 # =============================================================================
-# Add to PATH (optional)
+# Add to PATH
 # =============================================================================
 $currentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
 if ($currentPath -notlike "*$InstallPath*") {
-    Write-Host ""
-    $addToPath = Read-Host "Add KAPE to system PATH? (y/n)"
-    if ($addToPath -eq 'y') {
-        [Environment]::SetEnvironmentVariable("Path", "$currentPath;$InstallPath", "Machine")
-        Write-Host "[+] Added to PATH" -ForegroundColor Green
-    }
+    [Environment]::SetEnvironmentVariable("Path", "$currentPath;$InstallPath", "Machine")
+    Write-Host "[+] Added KAPE to system PATH" -ForegroundColor Green
 }
 
 # =============================================================================
@@ -268,22 +371,32 @@ if ($currentPath -notlike "*$InstallPath*") {
 # =============================================================================
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
-Write-Host "  Setup Complete" -ForegroundColor Green
+Write-Host "  Installation Complete" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "KAPE directory: $InstallPath" -ForegroundColor Cyan
 Write-Host ""
 
-if (-not (Test-Path $kapeExe)) {
-    Write-Host "Next steps:" -ForegroundColor Yellow
-    Write-Host "  1. Download KAPE from https://www.kroll.com/kape" -ForegroundColor White
-    Write-Host "  2. Extract to $InstallPath" -ForegroundColor White
-    Write-Host "  3. Run: kape.exe --sync (to update targets)" -ForegroundColor White
-} else {
-    Write-Host "Ready to use! Collection scripts:" -ForegroundColor Yellow
+if (Test-Path $kapeExe) {
+    try {
+        $version = & $kapeExe --version 2>&1 | Select-Object -First 1
+        Write-Host "Version: $version" -ForegroundColor Cyan
+    } catch {}
+
+    Write-Host ""
+    Write-Host "Collection scripts ready:" -ForegroundColor Yellow
     Write-Host "  - Collect-QuickTriage.bat (fast, essential artifacts)" -ForegroundColor White
     Write-Host "  - Collect-Full.bat (comprehensive)" -ForegroundColor White
     Write-Host "  - Collect-WithMemory.bat (with memory dump)" -ForegroundColor White
+    Write-Host ""
+    Write-Host "Quick start:" -ForegroundColor Yellow
+    Write-Host "  cd $InstallPath" -ForegroundColor White
+    Write-Host "  .\Collect-QuickTriage.bat" -ForegroundColor White
+} else {
+    Write-Host "KAPE download failed. Please download manually:" -ForegroundColor Yellow
+    Write-Host "  1. https://www.kroll.com/kape" -ForegroundColor White
+    Write-Host "  2. Extract to $InstallPath" -ForegroundColor White
+    Write-Host "  3. Run: kape.exe --sync" -ForegroundColor White
 }
 
 Write-Host ""
