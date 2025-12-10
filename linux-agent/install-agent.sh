@@ -530,16 +530,24 @@ install_osquery() {
 
     case $DISTRO in
         ubuntu|debian|kali)
-            export OSQUERY_KEY=1484120AC4E9F8A1A577AEEE97A80C63C9D8B80B
-            apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $OSQUERY_KEY
-            add-apt-repository 'deb [arch=amd64] https://pkg.osquery.io/deb deb main'
+            log_info "Додавання Osquery репозиторію (signed-by метод)..."
+            mkdir -p /etc/apt/keyrings
+            # Завантажуємо GPG ключ в новому форматі (не apt-key)
+            curl -fsSL https://pkg.osquery.io/deb/pubkey.gpg | gpg --dearmor -o /etc/apt/keyrings/osquery.gpg
+            # Додаємо репозиторій з signed-by
+            echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/osquery.gpg] https://pkg.osquery.io/deb deb main" > /etc/apt/sources.list.d/osquery.list
             apt-get update
             apt-get install -y osquery
             ;;
         rhel|centos|rocky|almalinux|fedora)
             curl -L https://pkg.osquery.io/rpm/GPG | tee /etc/pki/rpm-gpg/RPM-GPG-KEY-osquery
-            yum-config-manager --add-repo https://pkg.osquery.io/rpm/osquery-s3-rpm.repo
-            yum install -y osquery
+            if command -v dnf &> /dev/null; then
+                dnf config-manager --add-repo https://pkg.osquery.io/rpm/osquery-s3-rpm.repo
+                dnf install -y osquery
+            else
+                yum-config-manager --add-repo https://pkg.osquery.io/rpm/osquery-s3-rpm.repo
+                yum install -y osquery
+            fi
             ;;
         *)
             log_warning "Автоматичне встановлення osquery не підтримується для $DISTRO"
@@ -547,12 +555,26 @@ install_osquery() {
             ;;
     esac
 
+    log_success "Osquery встановлено"
+
+    # Налаштування для FleetDM
+    log_info "Налаштування Osquery для FleetDM..."
     mkdir -p /etc/osquery
     echo "$FLEET_SECRET" > /etc/osquery/enroll_secret
+    chmod 600 /etc/osquery/enroll_secret
+
+    # Витягуємо hostname:port з URL
+    local FLEET_HOST="${FLEET_URL#*://}"
+    FLEET_HOST="${FLEET_HOST%%/*}"
+
+    # Визначаємо чи використовувати TLS
+    local USE_TLS="true"
+    if [[ "$FLEET_URL" == http://* ]]; then
+        USE_TLS="false"
+    fi
 
     cat > /etc/osquery/osquery.flags << EOF
---tls_hostname=${FLEET_URL#*://}
---tls_server_certs=/etc/osquery/fleet.crt
+--tls_hostname=${FLEET_HOST}
 --enroll_secret_path=/etc/osquery/enroll_secret
 --host_identifier=hostname
 --enroll_tls_endpoint=/api/osquery/enroll
@@ -566,16 +588,34 @@ install_osquery() {
 --distributed_tls_write_endpoint=/api/osquery/distributed/write
 --logger_plugin=tls
 --logger_tls_endpoint=/api/osquery/log
+--logger_tls_period=10
 EOF
 
-    local FLEET_HOST="${FLEET_URL#*://}"
-    FLEET_HOST="${FLEET_HOST%%/*}"
-    openssl s_client -connect "$FLEET_HOST" < /dev/null 2>/dev/null | openssl x509 > /etc/osquery/fleet.crt 2>/dev/null || true
+    # Якщо HTTPS - отримуємо сертифікат
+    if [ "$USE_TLS" = "true" ]; then
+        log_info "Отримання TLS сертифіката FleetDM..."
+        echo "--tls_server_certs=/etc/osquery/fleet.crt" >> /etc/osquery/osquery.flags
+
+        # Отримуємо сертифікат сервера
+        if openssl s_client -connect "$FLEET_HOST" -servername "${FLEET_HOST%%:*}" </dev/null 2>/dev/null | openssl x509 -outform PEM > /etc/osquery/fleet.crt 2>/dev/null; then
+            log_success "TLS сертифікат отримано"
+        else
+            log_warning "Не вдалося отримати сертифікат, використовуємо insecure режим"
+            echo "--disable_enrollment=false" >> /etc/osquery/osquery.flags
+            echo "--tls_server_certs=" >> /etc/osquery/osquery.flags
+        fi
+    fi
 
     systemctl enable osqueryd
     systemctl start osqueryd
 
-    log_success "Osquery встановлено"
+    # Перевірка статусу
+    sleep 3
+    if systemctl is-active --quiet osqueryd; then
+        log_success "Osquery запущено та налаштовано для FleetDM"
+    else
+        log_warning "Osquery встановлено, але не запустився. Перевірте: journalctl -u osqueryd"
+    fi
 }
 
 # =============================================================================
