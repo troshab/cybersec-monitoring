@@ -401,25 +401,93 @@ deploy_inventory_stack() {
     log_success "Inventory Stack запущено"
 
     # -------------------------------------------------------------------------
-    # FleetDM Setup - отримання Enroll Secret
+    # FleetDM Auto-Setup via API
     # -------------------------------------------------------------------------
-    log_info "Очікування запуску FleetDM..."
-    sleep 15
+    setup_fleetdm
+}
 
-    echo ""
-    echo -e "${YELLOW}============================================================${NC}"
-    echo -e "${YELLOW}  FleetDM потребує початкового налаштування${NC}"
-    echo -e "${YELLOW}============================================================${NC}"
-    echo ""
-    echo "  1. Відкрийте браузер: https://${MONITORING_SERVER_IP}:${FLEET_PORT:-8080}"
-    echo "  2. Завершіть Setup Wizard (створіть адміна)"
-    echo "  3. Перейдіть: Settings → Organization settings → Enroll secret"
-    echo "  4. Скопіюйте Enroll Secret"
-    echo "  5. Оновіть FLEET_ENROLL_SECRET в $ENV_FILE"
-    echo ""
-    echo -e "${CYAN}Цей secret потрібен для підключення osquery агентів на клієнтах.${NC}"
-    echo ""
-    read -p "Натисніть Enter коли завершите налаштування FleetDM... "
+setup_fleetdm() {
+    log_info "Автоматичне налаштування FleetDM..."
+
+    local FLEET_URL="https://localhost:${FLEET_PORT:-8080}"
+    local MAX_RETRIES=30
+    local RETRY_INTERVAL=5
+
+    # Очікуємо поки FleetDM стане доступним
+    log_info "Очікування запуску FleetDM..."
+    for i in $(seq 1 $MAX_RETRIES); do
+        if curl -sk "$FLEET_URL/setup" >/dev/null 2>&1; then
+            log_success "FleetDM доступний"
+            break
+        fi
+        if [ $i -eq $MAX_RETRIES ]; then
+            log_error "FleetDM не запустився після $((MAX_RETRIES * RETRY_INTERVAL)) секунд"
+            log_warn "Налаштуйте FleetDM вручну: $FLEET_URL"
+            return 1
+        fi
+        sleep $RETRY_INTERVAL
+    done
+
+    # Перевіряємо чи вже налаштований
+    local SETUP_CHECK=$(curl -sk "$FLEET_URL/api/v1/setup" 2>/dev/null)
+    if echo "$SETUP_CHECK" | grep -q '"setup":false'; then
+        log_info "FleetDM вже налаштований"
+    else
+        # Виконуємо початкове налаштування через API
+        log_info "Створення адміністратора FleetDM..."
+
+        local SETUP_RESPONSE=$(curl -sk -X POST "$FLEET_URL/api/v1/setup" \
+            -H 'Content-Type: application/json' \
+            -d "{
+                \"admin\": {
+                    \"admin\": true,
+                    \"email\": \"${GRAFANA_ADMIN_USER:-monadmin}@${TARGET_DOMAIN_FQDN:-lab.local}\",
+                    \"name\": \"${GRAFANA_ADMIN_USER:-monadmin}\",
+                    \"password\": \"${GRAFANA_ADMIN_PASSWORD:-Mon!123admin}\"
+                },
+                \"org_info\": {
+                    \"org_name\": \"${ORGANIZATION_NAME:-LAB Training}\"
+                },
+                \"server_url\": \"https://${MONITORING_SERVER_IP}:${FLEET_PORT:-8080}\"
+            }" 2>/dev/null)
+
+        if echo "$SETUP_RESPONSE" | grep -q '"token"'; then
+            log_success "FleetDM адміністратор створений"
+
+            # Витягуємо токен
+            local FLEET_TOKEN=$(echo "$SETUP_RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+
+            if [ -n "$FLEET_TOKEN" ]; then
+                # Отримуємо Enroll Secret
+                local ENROLL_RESPONSE=$(curl -sk "$FLEET_URL/api/v1/fleet/spec/enroll_secret" \
+                    -H "Authorization: Bearer $FLEET_TOKEN" 2>/dev/null)
+
+                local ENROLL_SECRET=$(echo "$ENROLL_RESPONSE" | grep -o '"secret":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+                if [ -n "$ENROLL_SECRET" ]; then
+                    # Оновлюємо .env файл
+                    sed -i "s/FLEET_ENROLL_SECRET=.*/FLEET_ENROLL_SECRET=$ENROLL_SECRET/" "$ENV_FILE"
+                    log_success "Fleet Enroll Secret збережено в $ENV_FILE"
+
+                    echo ""
+                    echo -e "${GREEN}============================================================${NC}"
+                    echo -e "${GREEN}  FleetDM налаштовано автоматично!${NC}"
+                    echo -e "${GREEN}============================================================${NC}"
+                    echo ""
+                    echo -e "  URL: ${CYAN}https://${MONITORING_SERVER_IP}:${FLEET_PORT:-8080}${NC}"
+                    echo -e "  Логін: ${CYAN}${GRAFANA_ADMIN_USER:-monadmin}@${TARGET_DOMAIN_FQDN:-lab.local}${NC}"
+                    echo -e "  Пароль: ${CYAN}${GRAFANA_ADMIN_PASSWORD:-Mon!123admin}${NC}"
+                    echo ""
+                    echo -e "  Enroll Secret: ${CYAN}${ENROLL_SECRET}${NC}"
+                    echo ""
+                else
+                    log_warn "Не вдалося отримати Enroll Secret"
+                fi
+            fi
+        else
+            log_error "Помилка налаштування FleetDM: $SETUP_RESPONSE"
+        fi
+    fi
 }
 
 install_alloy() {
