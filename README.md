@@ -126,7 +126,26 @@ sudo ./server/01-install.sh
 .\windows-server-2025\Deploy-Server.ps1 -LokiUrl "http://10.0.1.2:3100"
 ```
 
-### 5. Перевірка роботи
+### 5. Харденінг систем (опціонально)
+
+Центральні скрипти харденінгу застосовують базові налаштування безпеки:
+
+```powershell
+# Windows 11 клієнт
+.\windows-11-client\00-Harden-Client.ps1
+
+# Windows Server 2025 (автоматично визначає ролі: DC, DHCP, DNS, NPS)
+.\windows-server-2025\00-Harden-Server.ps1
+
+# Linux
+sudo ./linux-agent/00-Harden-Linux.sh
+```
+
+**Що включено:**
+- Windows: SMB hardening, LLMNR/NetBIOS disable, Pass-the-Hash protection, ASR rules, TLS 1.2/1.3
+- Linux: sysctl security, SSH hardening, ufw firewall, auditd rules
+
+### 6. Перевірка роботи
 
 1. Відкрийте Grafana: `http://10.0.1.2:3000`
 2. Логін: admin / (пароль з .env)
@@ -161,14 +180,17 @@ cybersec-monitoring/
 │   └── 06-Install-OsqueryAgent.ps1
 │
 ├── windows-11-client/        # Для робочих станцій
+│   ├── 00-Harden-Client.ps1  # Центральний скрипт харденінгу
 │   ├── Deploy-Client.ps1
 │   └── config.alloy          # Alloy config для клієнтів
 │
 ├── windows-server-2025/      # Для серверів
+│   ├── 00-Harden-Server.ps1  # Центральний скрипт харденінгу
 │   ├── Deploy-Server.ps1
 │   └── config.alloy          # Alloy config для серверів
 │
-├── linux-client/             # Для Linux систем
+├── linux-agent/              # Для Linux систем
+│   ├── 00-Harden-Linux.sh    # Центральний скрипт харденінгу
 │   ├── install-agent.sh
 │   └── config.alloy          # Alloy config для Linux
 │
