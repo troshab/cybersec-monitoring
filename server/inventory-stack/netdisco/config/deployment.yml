@@ -1,0 +1,22 @@
+# Netdisco minimal configuration
+# This file is required but most settings come from environment variables
+# Ref: https://github.com/netdisco/netdisco/wiki/Configuration
+
+# SNMP community strings
+community:
+  - public
+  - private
+
+# Discovery settings
+discover_waps: true
+discover_phones: false
+discover_neighbors: true
+
+# Number of backend workers
+workers: 2
+
+# Timezone
+timezone: 'Europe/Kyiv'
+
+# Logging level
+log: 'info'
