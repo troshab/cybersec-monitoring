@@ -215,7 +215,6 @@ setup_system() {
         ca-certificates \
         gnupg \
         lsb-release \
-        software-properties-common \
         apt-transport-https
 
     log_success "Базові пакети встановлено"
@@ -417,7 +416,7 @@ install_alloy() {
     log_info "Встановлення Grafana Alloy (замінює deprecated Promtail)..."
 
     # Додати Grafana репозиторій
-    apt-get install -y -qq apt-transport-https software-properties-common wget gpg
+    apt-get install -y -qq apt-transport-https wget gpg
 
     mkdir -p /etc/apt/keyrings/
     wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor > /etc/apt/keyrings/grafana.gpg
