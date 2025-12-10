@@ -294,7 +294,7 @@ install_docker() {
 
     # Очищення старих ключів та репозиторіїв Docker
     rm -f /etc/apt/keyrings/docker.gpg /etc/apt/keyrings/docker.asc 2>/dev/null || true
-    rm -f /etc/apt/sources.list.d/docker.list 2>/dev/null || true
+    rm -f /etc/apt/sources.list.d/docker.list /etc/apt/sources.list.d/docker.sources 2>/dev/null || true
 
     # Додавання Docker репозиторію
     install -m 0755 -d /etc/apt/keyrings
