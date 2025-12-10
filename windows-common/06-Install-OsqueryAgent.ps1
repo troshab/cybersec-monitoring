@@ -62,7 +62,13 @@ Write-Host "  Osquery Agent Installation for FleetDM" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 
-$installDir = "C:\Program Files\osquery"
+# osquery MSI installs to different locations depending on version
+$possibleInstallDirs = @(
+    "C:\Program Files\osquery",
+    "${env:ProgramFiles}\osquery",
+    "${env:ProgramFiles(x86)}\osquery"
+)
+$installDir = $possibleInstallDirs[0]  # Default, will be updated after MSI install
 $tempDir = "$env:TEMP\osquery_install"
 
 # Parse Fleet URL
@@ -120,6 +126,29 @@ if ($process.ExitCode -ne 0) {
 
 Write-Log "Osquery встановлено" -Level Success
 
+# Find actual install directory after MSI
+foreach ($dir in $possibleInstallDirs) {
+    if (Test-Path "$dir\osqueryd.exe") {
+        $installDir = $dir
+        Write-Log "Знайдено osquery в: $installDir" -Level Info
+        break
+    }
+}
+
+# Also check via registry
+if (-not (Test-Path "$installDir\osqueryd.exe")) {
+    $regPath = Get-ItemProperty -Path "HKLM:\SOFTWARE\osquery" -ErrorAction SilentlyContinue
+    if ($regPath -and $regPath.InstallPath) {
+        $installDir = $regPath.InstallPath
+    }
+}
+
+if (-not (Test-Path "$installDir\osqueryd.exe")) {
+    Write-Log "Не знайдено osqueryd.exe після встановлення MSI!" -Level Error
+    Write-Log "Перевірте встановлення вручну" -Level Warning
+    exit 1
+}
+
 # =============================================================================
 # Завантаження сертифіката FleetDM
 # =============================================================================
@@ -165,28 +194,40 @@ Write-Log "Створення конфігурації..." -Level Info
 # Enroll secret
 $EnrollSecret | Out-File -FilePath "$installDir\enroll_secret" -Encoding ASCII -NoNewline
 
-# Flags file
-$tlsCertsFlag = if ($Insecure) { "" } else { "--tls_server_certs=$certFile" }
-$flagsContent = @"
---tls_hostname=$fleetHostname`:$fleetPort
-$tlsCertsFlag
---enroll_secret_path=$installDir\enroll_secret
---host_identifier=hostname
---enroll_tls_endpoint=/api/osquery/enroll
---config_plugin=tls
---config_tls_endpoint=/api/osquery/config
---config_refresh=10
---disable_distributed=false
---distributed_plugin=tls
---distributed_interval=10
---distributed_tls_max_attempts=3
---distributed_tls_read_endpoint=/api/osquery/distributed/read
---distributed_tls_write_endpoint=/api/osquery/distributed/write
---logger_plugin=tls
---logger_tls_endpoint=/api/osquery/log
---logger_tls_period=10
-"@
+# Flags file - build dynamically
+$flagsLines = @(
+    "--tls_hostname=$fleetHostname`:$fleetPort",
+    "--enroll_secret_path=$installDir\enroll_secret",
+    "--host_identifier=hostname",
+    "--enroll_tls_endpoint=/api/osquery/enroll",
+    "--config_plugin=tls",
+    "--config_tls_endpoint=/api/osquery/config",
+    "--config_refresh=10",
+    "--disable_distributed=false",
+    "--distributed_plugin=tls",
+    "--distributed_interval=10",
+    "--distributed_tls_max_attempts=3",
+    "--distributed_tls_read_endpoint=/api/osquery/distributed/read",
+    "--distributed_tls_write_endpoint=/api/osquery/distributed/write",
+    "--logger_plugin=tls",
+    "--logger_tls_endpoint=/api/osquery/log",
+    "--logger_tls_period=10"
+)
 
+# Add TLS cert flag only if not insecure and cert exists
+if (-not $Insecure) {
+    if (Test-Path $certFile) {
+        $flagsLines += "--tls_server_certs=$certFile"
+    } else {
+        Write-Log "Сертифікат не знайдено, додаю --insecure для пропуску TLS перевірки" -Level Warning
+        $flagsLines += "--insecure"
+    }
+} else {
+    Write-Log "Режим -Insecure: пропуск TLS перевірки сертифіката" -Level Warning
+    $flagsLines += "--insecure"
+}
+
+$flagsContent = $flagsLines -join "`n"
 $flagsContent | Out-File -FilePath "$installDir\osquery.flags" -Encoding ASCII
 
 Write-Log "Конфігурацію створено" -Level Success
@@ -196,29 +237,63 @@ Write-Log "Конфігурацію створено" -Level Success
 # =============================================================================
 Write-Log "Запуск сервісу osqueryd..." -Level Info
 
+$osqueryExe = "$installDir\osqueryd.exe"
+
+if (-not (Test-Path $osqueryExe)) {
+    Write-Log "osqueryd.exe не знайдено в $installDir" -Level Error
+    exit 1
+}
+
 # Зупинка якщо запущено
 Stop-Service -Name "osqueryd" -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 2
 
 # Видалення старого сервісу
-& "$installDir\osqueryd.exe" --uninstall 2>$null
+try {
+    $uninstallResult = & $osqueryExe --uninstall 2>&1
+    Write-Log "Старий сервіс видалено" -Level Info
+} catch {
+    # Ignore errors if service doesn't exist
+}
+
+Start-Sleep -Seconds 1
 
 # Реєстрація сервісу
-& "$installDir\osqueryd.exe" --install --flagfile="$installDir\osquery.flags"
+try {
+    $installResult = & $osqueryExe --install --flagfile="$installDir\osquery.flags" 2>&1
+    Write-Log "Сервіс зареєстровано" -Level Info
+} catch {
+    Write-Log "Помилка реєстрації сервісу: $_" -Level Error
+}
 
 Start-Sleep -Seconds 2
 
 # Запуск
-Start-Service -Name "osqueryd"
+try {
+    Start-Service -Name "osqueryd" -ErrorAction Stop
+} catch {
+    Write-Log "Помилка запуску сервісу: $_" -Level Warning
+}
 
 Start-Sleep -Seconds 3
 
-$service = Get-Service -Name "osqueryd"
+$service = Get-Service -Name "osqueryd" -ErrorAction SilentlyContinue
 
-if ($service.Status -eq "Running") {
+if ($service -and $service.Status -eq "Running") {
     Write-Log "Osquery сервіс запущено!" -Level Success
 } else {
-    Write-Log "Сервіс не запустився" -Level Error
+    Write-Log "Сервіс не запустився" -Level Warning
     Write-Log "Перевірте логи: $installDir\osqueryd.results.log" -Level Info
+
+    # Show recent log if exists
+    $logFile = "$installDir\osqueryd.results.log"
+    if (Test-Path $logFile) {
+        $lastLines = Get-Content $logFile -Tail 5 -ErrorAction SilentlyContinue
+        if ($lastLines) {
+            Write-Log "Останні записи логу:" -Level Info
+            $lastLines | ForEach-Object { Write-Host "  $_" }
+        }
+    }
 }
 
 # =============================================================================
