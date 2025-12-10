@@ -191,8 +191,15 @@ loki.source.windowsevent "security" {
 # Update Loki URL in config if needed
 if ($LokiUrl) {
     $configContent = Get-Content "$dataDir\config.alloy" -Raw
-    $configContent = $configContent -replace 'url\s*=\s*"http://[^"]+/loki/api/v1/push"', "url = `"$LokiUrl/loki/api/v1/push`""
+    # Normalize LokiUrl - remove trailing slash and /loki/api/v1/push if present
+    $lokiBase = $LokiUrl.TrimEnd('/')
+    if ($lokiBase -match '/loki/api/v1/push$') {
+        $lokiBase = $lokiBase -replace '/loki/api/v1/push$', ''
+    }
+    $fullLokiUrl = "$lokiBase/loki/api/v1/push"
+    $configContent = $configContent -replace 'url\s*=\s*"http://[^"]+/loki/api/v1/push"', "url = `"$fullLokiUrl`""
     $configContent | Out-File -FilePath "$dataDir\config.alloy" -Encoding UTF8 -NoNewline
+    Write-Log "Loki URL updated to: $fullLokiUrl" -Level Info
 }
 
 # =============================================================================
@@ -219,16 +226,48 @@ if (Test-Path $regPath) {
 # =============================================================================
 Write-Log "Starting Alloy service..." -Level Info
 
-Start-Service -Name $serviceName -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 5
+# Create data directory for storage
+$storageDir = "$dataDir\data"
+New-Item -ItemType Directory -Path $storageDir -Force | Out-Null
+
+# Try to start service
+try {
+    Start-Service -Name $serviceName -ErrorAction Stop
+    Start-Sleep -Seconds 5
+} catch {
+    Write-Log "Помилка запуску: $_" -Level Warning
+}
 
 $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
 
 if ($service -and $service.Status -eq "Running") {
     Write-Log "Alloy started successfully!" -Level Success
 } else {
-    Write-Log "Alloy service did not start. Check logs." -Level Warning
+    Write-Log "Alloy service did not start. Checking..." -Level Warning
+
+    # Try to run alloy manually to see the error
+    $alloyExe = "$installDir\alloy-windows-amd64.exe"
+    if (Test-Path $alloyExe) {
+        Write-Log "Testing config syntax..." -Level Info
+        try {
+            $testResult = & $alloyExe fmt "$dataDir\config.alloy" 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Log "Config error: $testResult" -Level Error
+            } else {
+                Write-Log "Config syntax OK" -Level Success
+            }
+        } catch {
+            Write-Log "Cannot test config: $_" -Level Warning
+        }
+    }
+
     Write-Log "Event Viewer -> Application and Services Logs -> Alloy" -Level Info
+
+    # Show service configuration
+    $svcConfig = Get-WmiObject -Class Win32_Service -Filter "Name='$serviceName'" -ErrorAction SilentlyContinue
+    if ($svcConfig) {
+        Write-Log "Service ImagePath: $($svcConfig.PathName)" -Level Info
+    }
 }
 
 # =============================================================================

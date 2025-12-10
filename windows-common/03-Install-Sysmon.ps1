@@ -72,17 +72,43 @@ if ($existingSysmon) {
     Write-Log "Sysmon already installed: $($existingSysmon.Name)" -Level Warning
     Write-Log "Updating configuration..." -Level Info
 
-    if ($ConfigPath -and (Test-Path $ConfigPath)) {
-        & "$sysmonDir\Sysmon64.exe" -c $ConfigPath
-    } else {
-        # Downloading new configuration
-        $tempConfig = "$tempDir\sysmonconfig.xml"
-        New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
-        Invoke-WebRequest -Uri $ConfigUrl -OutFile $tempConfig -UseBasicParsing
-        & "$sysmonDir\Sysmon64.exe" -c $tempConfig
+    # Find Sysmon executable (could be in different locations)
+    $sysmonExe = $null
+    $possiblePaths = @(
+        "$sysmonDir\Sysmon64.exe",
+        "$sysmonDir\Sysmon.exe",
+        "C:\Windows\Sysmon64.exe",
+        "C:\Windows\Sysmon.exe"
+    )
+    foreach ($path in $possiblePaths) {
+        if (Test-Path $path) {
+            $sysmonExe = $path
+            break
+        }
     }
 
-    Write-Log "Configuration updated" -Level Success
+    if (-not $sysmonExe) {
+        # Try to find via service image path
+        $svc = Get-WmiObject -Class Win32_Service -Filter "Name LIKE 'Sysmon%'" -ErrorAction SilentlyContinue
+        if ($svc -and $svc.PathName) {
+            $sysmonExe = $svc.PathName.Trim('"').Split(' ')[0]
+        }
+    }
+
+    if ($sysmonExe -and (Test-Path $sysmonExe)) {
+        if ($ConfigPath -and (Test-Path $ConfigPath)) {
+            & $sysmonExe -c $ConfigPath 2>&1 | Out-Null
+        } else {
+            # Downloading new configuration
+            $tempConfig = "$tempDir\sysmonconfig.xml"
+            New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+            Invoke-WebRequest -Uri $ConfigUrl -OutFile $tempConfig -UseBasicParsing
+            & $sysmonExe -c $tempConfig 2>&1 | Out-Null
+        }
+        Write-Log "Configuration updated" -Level Success
+    } else {
+        Write-Log "Cannot find Sysmon executable, skipping config update" -Level Warning
+    }
     exit 0
 }
 
