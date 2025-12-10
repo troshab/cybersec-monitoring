@@ -187,6 +187,71 @@ install_dependencies() {
 }
 
 # =============================================================================
+# Встановлення rsyslog (для сумісності з Alloy)
+# =============================================================================
+ensure_rsyslog() {
+    banner "Перевірка rsyslog"
+
+    # Сучасні дистрибутиви (Debian 12+, Ubuntu 23.04+) використовують тільки journald
+    # Alloy потребує текстових файлів логів: /var/log/auth.log, /var/log/syslog
+
+    local need_rsyslog=false
+
+    if [ ! -f /var/log/auth.log ] && [ ! -f /var/log/secure ]; then
+        log_warning "Файл /var/log/auth.log не знайдено"
+        need_rsyslog=true
+    fi
+
+    if [ ! -f /var/log/syslog ] && [ ! -f /var/log/messages ]; then
+        log_warning "Файл /var/log/syslog не знайдено"
+        need_rsyslog=true
+    fi
+
+    if [ "$need_rsyslog" = true ]; then
+        log_info "Встановлення rsyslog для генерації текстових логів..."
+
+        case $DISTRO in
+            ubuntu|debian|kali)
+                apt-get install -y rsyslog
+                ;;
+            rhel|centos|rocky|almalinux|fedora)
+                if command -v dnf &> /dev/null; then
+                    dnf install -y rsyslog
+                else
+                    yum install -y rsyslog
+                fi
+                ;;
+            *)
+                log_warning "Автоматичне встановлення rsyslog не підтримується для $DISTRO"
+                return
+                ;;
+        esac
+
+        systemctl enable rsyslog
+        systemctl start rsyslog
+
+        # Очікування появи логів
+        sleep 2
+
+        if [ -f /var/log/auth.log ] || [ -f /var/log/secure ]; then
+            log_success "rsyslog встановлено, файли логів створено"
+        else
+            log_warning "rsyslog встановлено, але файли логів ще не з'явились"
+        fi
+    else
+        log_success "Текстові файли логів вже існують"
+
+        # Перевіряємо чи rsyslog запущений
+        if systemctl is-active --quiet rsyslog 2>/dev/null; then
+            log_info "rsyslog вже працює"
+        else
+            log_info "Запуск rsyslog..."
+            systemctl start rsyslog 2>/dev/null || true
+        fi
+    fi
+}
+
+# =============================================================================
 # Створення директорій
 # =============================================================================
 create_directories() {
@@ -619,6 +684,7 @@ main() {
 
     detect_distro
     install_dependencies
+    ensure_rsyslog
     create_directories
     install_alloy
     install_node_exporter
