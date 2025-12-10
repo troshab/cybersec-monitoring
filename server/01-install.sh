@@ -347,8 +347,8 @@ deploy_monitoring_stack() {
     # Копіювання конфігурацій
     cp -r "$SCRIPT_DIR/monitoring-stack/"* "$INSTALL_DIR/config/"
 
-    # Заміна змінних в конфігах
-    find "$INSTALL_DIR/config" -type f -name "*.yml" -o -name "*.yaml" -o -name "*.ini" | while read -r file; do
+    # Заміна змінних в конфігах (виключаємо alerts - там є шаблони {{ $value }})
+    find "$INSTALL_DIR/config" -type f \( -name "*.yml" -o -name "*.yaml" -o -name "*.ini" \) ! -path "*/alerts/*" | while read -r file; do
         envsubst < "$file" > "$file.tmp" && mv "$file.tmp" "$file"
     done
 
