@@ -169,15 +169,8 @@ check_env_file() {
 }
 
 check_disk_space() {
-    local required_gb=50
     local available_gb=$(df -BG / | tail -1 | awk '{print $4}' | tr -d 'G')
-
-    if [[ $available_gb -lt $required_gb ]]; then
-        log_error "Недостатньо місця на диску: ${available_gb}GB (потрібно мінімум ${required_gb}GB)"
-        exit 1
-    fi
-
-    log_success "Вільне місце на диску: ${available_gb}GB"
+    log_info "Вільне місце на диску: ${available_gb}GB"
 }
 
 check_internet() {
