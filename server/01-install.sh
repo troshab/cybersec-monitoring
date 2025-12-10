@@ -410,33 +410,38 @@ setup_fleetdm() {
     log_info "Автоматичне налаштування FleetDM..."
 
     local FLEET_URL="https://localhost:${FLEET_PORT:-8080}"
-    local MAX_RETRIES=30
-    local RETRY_INTERVAL=5
+    local MAX_RETRIES=60
+    local RETRY_INTERVAL=3
 
-    # Очікуємо поки FleetDM стане доступним
-    log_info "Очікування запуску FleetDM..."
+    # Очікуємо поки FleetDM повністю ініціалізується
+    # HTTP 200 = форма налаштування готова
+    # HTTP 307/302 = вже налаштований (редірект на login)
+    log_info "Очікування ініціалізації FleetDM..."
+    local SETUP_HTTP=""
     for i in $(seq 1 $MAX_RETRIES); do
-        # Перевіряємо чи FleetDM відповідає (будь-який HTTP код)
-        local HTTP_CODE=$(curl -sk -o /dev/null -w '%{http_code}' "$FLEET_URL/setup" 2>/dev/null)
-        if [ "$HTTP_CODE" != "000" ]; then
-            log_success "FleetDM доступний"
+        SETUP_HTTP=$(curl -sk -o /dev/null -w '%{http_code}' "$FLEET_URL/setup" 2>/dev/null)
+
+        if [ "$SETUP_HTTP" = "200" ]; then
+            log_success "FleetDM готовий до налаштування"
             break
+        elif [ "$SETUP_HTTP" = "307" ] || [ "$SETUP_HTTP" = "302" ]; then
+            log_info "FleetDM вже налаштований (redirect на login)"
+            log_warn "Enroll Secret потрібно отримати вручну з UI: Settings -> Organization -> Enroll secret"
+            return 0
         fi
+
         if [ $i -eq $MAX_RETRIES ]; then
-            log_error "FleetDM не запустився після $((MAX_RETRIES * RETRY_INTERVAL)) секунд"
+            log_error "FleetDM не ініціалізувався після $((MAX_RETRIES * RETRY_INTERVAL)) секунд"
             log_warn "Налаштуйте FleetDM вручну: $FLEET_URL"
             return 1
         fi
+
+        # Показуємо прогрес кожні 15 секунд
+        if [ $((i % 5)) -eq 0 ]; then
+            log_info "Очікування FleetDM... (HTTP: $SETUP_HTTP, спроба $i/$MAX_RETRIES)"
+        fi
         sleep $RETRY_INTERVAL
     done
-
-    # Перевіряємо чи вже налаштований (якщо /setup редіректить на /login - вже налаштований)
-    local SETUP_HTTP=$(curl -sk -o /dev/null -w '%{http_code}' "$FLEET_URL/setup" 2>/dev/null)
-    if [ "$SETUP_HTTP" = "307" ] || [ "$SETUP_HTTP" = "302" ]; then
-        log_info "FleetDM вже налаштований (redirect на login)"
-        log_warn "Enroll Secret потрібно отримати вручну з UI: Settings -> Organization -> Enroll secret"
-        return 0
-    fi
 
     # Виконуємо початкове налаштування через API
     log_info "Створення адміністратора FleetDM..."
