@@ -55,7 +55,25 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$CommonDir = Join-Path (Split-Path -Parent $ScriptDir) "windows-common"
+$RepoDir = Split-Path -Parent $ScriptDir
+$CommonDir = Join-Path $RepoDir "windows-common"
+
+# =============================================================================
+# Auto-update repository before deployment
+# =============================================================================
+if (Test-Path "$RepoDir\.git") {
+    Write-Host "[*] Checking for updates..." -ForegroundColor Cyan
+    Push-Location $RepoDir
+    try {
+        $pullResult = git pull 2>&1
+        if ($pullResult -notmatch "Already up to date") {
+            Write-Host "[+] Repository updated" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "[!] Could not update repository: $_" -ForegroundColor Yellow
+    }
+    Pop-Location
+}
 
 function Write-Log {
     param([string]$Message, [string]$Level = 'Info')
