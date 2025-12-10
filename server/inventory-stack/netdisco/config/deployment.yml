@@ -1,22 +1,39 @@
-# Netdisco minimal configuration
-# This file is required but most settings come from environment variables
-# Ref: https://github.com/netdisco/netdisco/wiki/Configuration
+#
+# NETDISCO 2 CONFIGURATION FILE
+#
+# Settings in this file override share/config.yml
+#
+# https://github.com/netdisco/netdisco/wiki/Configuration
 
-# SNMP community strings
-community:
-  - public
-  - private
+# ------------------
+# ESSENTIAL SETTINGS
+# ------------------
 
-# Discovery settings
-discover_waps: true
-discover_phones: false
-discover_neighbors: true
+database:
+  name: 'netdisco'
+  user: 'netdisco'
+  pass: 'netdisco'
 
-# Number of backend workers
-workers: 2
+# ------------------------
+# DOCKER SPECIFIC SETTINGS
+# ------------------------
 
-# Timezone
-timezone: 'Europe/Kyiv'
+# Allows you to put plugin code in /lib, and templates in /share/views,
+# within the nd-site-local directory.
+site_local_files: true
 
-# Logging level
-log: 'info'
+# set to true to globally disable authentication/login.
+# the user called "guest" has full admin/port-control rights.
+no_auth: true
+
+# --------------------
+# RECOMMENDED SETTINGS
+# --------------------
+
+# Device authentication settings
+# define snmp communities here
+device_auth:
+  - tag: 'default_v2_readonly'
+    community: 'public'
+    read: true
+    write: false
