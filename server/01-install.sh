@@ -416,7 +416,9 @@ setup_fleetdm() {
     # Очікуємо поки FleetDM стане доступним
     log_info "Очікування запуску FleetDM..."
     for i in $(seq 1 $MAX_RETRIES); do
-        if curl -sk "$FLEET_URL/setup" >/dev/null 2>&1; then
+        # Перевіряємо чи FleetDM відповідає (будь-який HTTP код)
+        local HTTP_CODE=$(curl -sk -o /dev/null -w '%{http_code}' "$FLEET_URL/setup" 2>/dev/null)
+        if [ "$HTTP_CODE" != "000" ]; then
             log_success "FleetDM доступний"
             break
         fi
@@ -428,65 +430,67 @@ setup_fleetdm() {
         sleep $RETRY_INTERVAL
     done
 
-    # Перевіряємо чи вже налаштований
-    local SETUP_CHECK=$(curl -sk "$FLEET_URL/api/v1/setup" 2>/dev/null)
-    if echo "$SETUP_CHECK" | grep -q '"setup":false'; then
-        log_info "FleetDM вже налаштований"
-    else
-        # Виконуємо початкове налаштування через API
-        log_info "Створення адміністратора FleetDM..."
+    # Перевіряємо чи вже налаштований (якщо /setup редіректить на /login - вже налаштований)
+    local SETUP_HTTP=$(curl -sk -o /dev/null -w '%{http_code}' "$FLEET_URL/setup" 2>/dev/null)
+    if [ "$SETUP_HTTP" = "307" ] || [ "$SETUP_HTTP" = "302" ]; then
+        log_info "FleetDM вже налаштований (redirect на login)"
+        log_warn "Enroll Secret потрібно отримати вручну з UI: Settings -> Organization -> Enroll secret"
+        return 0
+    fi
 
-        local SETUP_RESPONSE=$(curl -sk -X POST "$FLEET_URL/api/v1/setup" \
-            -H 'Content-Type: application/json' \
-            -d "{
-                \"admin\": {
-                    \"admin\": true,
-                    \"email\": \"${GRAFANA_ADMIN_USER:-monadmin}@${TARGET_DOMAIN_FQDN:-lab.local}\",
-                    \"name\": \"${GRAFANA_ADMIN_USER:-monadmin}\",
-                    \"password\": \"${GRAFANA_ADMIN_PASSWORD:-Mon!123admin}\"
-                },
-                \"org_info\": {
-                    \"org_name\": \"${ORGANIZATION_NAME:-LAB Training}\"
-                },
-                \"server_url\": \"https://${MONITORING_SERVER_IP}:${FLEET_PORT:-8080}\"
-            }" 2>/dev/null)
+    # Виконуємо початкове налаштування через API
+    log_info "Створення адміністратора FleetDM..."
 
-        if echo "$SETUP_RESPONSE" | grep -q '"token"'; then
-            log_success "FleetDM адміністратор створений"
+    local SETUP_RESPONSE=$(curl -sk -X POST "$FLEET_URL/api/v1/setup" \
+        -H 'Content-Type: application/json' \
+        -d "{
+            \"admin\": {
+                \"admin\": true,
+                \"email\": \"${GRAFANA_ADMIN_USER:-monadmin}@${TARGET_DOMAIN_FQDN:-lab.local}\",
+                \"name\": \"${GRAFANA_ADMIN_USER:-monadmin}\",
+                \"password\": \"${GRAFANA_ADMIN_PASSWORD:-Mon!123admin}\"
+            },
+            \"org_info\": {
+                \"org_name\": \"${ORGANIZATION_NAME:-LAB Training}\"
+            },
+            \"server_url\": \"https://${MONITORING_SERVER_IP}:${FLEET_PORT:-8080}\"
+        }" 2>/dev/null)
 
-            # Витягуємо токен
-            local FLEET_TOKEN=$(echo "$SETUP_RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+    if echo "$SETUP_RESPONSE" | grep -q '"token"'; then
+        log_success "FleetDM адміністратор створений"
 
-            if [ -n "$FLEET_TOKEN" ]; then
-                # Отримуємо Enroll Secret
-                local ENROLL_RESPONSE=$(curl -sk "$FLEET_URL/api/v1/fleet/spec/enroll_secret" \
-                    -H "Authorization: Bearer $FLEET_TOKEN" 2>/dev/null)
+        # Витягуємо токен
+        local FLEET_TOKEN=$(echo "$SETUP_RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 
-                local ENROLL_SECRET=$(echo "$ENROLL_RESPONSE" | grep -o '"secret":"[^"]*"' | head -1 | cut -d'"' -f4)
+        if [ -n "$FLEET_TOKEN" ]; then
+            # Отримуємо Enroll Secret
+            local ENROLL_RESPONSE=$(curl -sk "$FLEET_URL/api/v1/fleet/spec/enroll_secret" \
+                -H "Authorization: Bearer $FLEET_TOKEN" 2>/dev/null)
 
-                if [ -n "$ENROLL_SECRET" ]; then
-                    # Оновлюємо .env файл
-                    sed -i "s/FLEET_ENROLL_SECRET=.*/FLEET_ENROLL_SECRET=$ENROLL_SECRET/" "$ENV_FILE"
-                    log_success "Fleet Enroll Secret збережено в $ENV_FILE"
+            local ENROLL_SECRET=$(echo "$ENROLL_RESPONSE" | grep -o '"secret":"[^"]*"' | head -1 | cut -d'"' -f4)
 
-                    echo ""
-                    echo -e "${GREEN}============================================================${NC}"
-                    echo -e "${GREEN}  FleetDM налаштовано автоматично!${NC}"
-                    echo -e "${GREEN}============================================================${NC}"
-                    echo ""
-                    echo -e "  URL: ${CYAN}https://${MONITORING_SERVER_IP}:${FLEET_PORT:-8080}${NC}"
-                    echo -e "  Логін: ${CYAN}${GRAFANA_ADMIN_USER:-monadmin}@${TARGET_DOMAIN_FQDN:-lab.local}${NC}"
-                    echo -e "  Пароль: ${CYAN}${GRAFANA_ADMIN_PASSWORD:-Mon!123admin}${NC}"
-                    echo ""
-                    echo -e "  Enroll Secret: ${CYAN}${ENROLL_SECRET}${NC}"
-                    echo ""
-                else
-                    log_warn "Не вдалося отримати Enroll Secret"
-                fi
+            if [ -n "$ENROLL_SECRET" ]; then
+                # Оновлюємо .env файл
+                sed -i "s/FLEET_ENROLL_SECRET=.*/FLEET_ENROLL_SECRET=$ENROLL_SECRET/" "$ENV_FILE"
+                log_success "Fleet Enroll Secret збережено в $ENV_FILE"
+
+                echo ""
+                echo -e "${GREEN}============================================================${NC}"
+                echo -e "${GREEN}  FleetDM налаштовано автоматично!${NC}"
+                echo -e "${GREEN}============================================================${NC}"
+                echo ""
+                echo -e "  URL: ${CYAN}https://${MONITORING_SERVER_IP}:${FLEET_PORT:-8080}${NC}"
+                echo -e "  Логін: ${CYAN}${GRAFANA_ADMIN_USER:-monadmin}@${TARGET_DOMAIN_FQDN:-lab.local}${NC}"
+                echo -e "  Пароль: ${CYAN}${GRAFANA_ADMIN_PASSWORD:-Mon!123admin}${NC}"
+                echo ""
+                echo -e "  Enroll Secret: ${CYAN}${ENROLL_SECRET}${NC}"
+                echo ""
+            else
+                log_warn "Не вдалося отримати Enroll Secret"
             fi
-        else
-            log_error "Помилка налаштування FleetDM: $SETUP_RESPONSE"
         fi
+    else
+        log_error "Помилка налаштування FleetDM: $SETUP_RESPONSE"
     fi
 }
 
