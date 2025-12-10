@@ -338,9 +338,10 @@ create_directories() {
     # Права для Loki
     chown -R 10001:10001 "$INSTALL_DIR/data/loki"
 
-    # Права для FleetDM logs (контейнер працює під uid 100)
+    # Права для FleetDM та Netdisco logs
     if [[ "$SKIP_INVENTORY" != true ]]; then
         chmod 777 "$INVENTORY_DIR/fleetdm/logs"
+        chmod 777 "$INVENTORY_DIR/netdisco/logs"
     fi
 
     log_success "Директорії створено"
