@@ -68,24 +68,25 @@ $tempDir = "$env:TEMP\sysmon_install"
 # =============================================================================
 $existingSysmon = Get-Service -Name "Sysmon*" -ErrorAction SilentlyContinue
 
+# Find Sysmon executable (could be in different locations)
+$sysmonExe = $null
+$possiblePaths = @(
+    "$sysmonDir\Sysmon64.exe",
+    "$sysmonDir\Sysmon.exe",
+    "C:\Windows\Sysmon64.exe",
+    "C:\Windows\Sysmon.exe"
+)
+foreach ($path in $possiblePaths) {
+    if (Test-Path $path) {
+        $sysmonExe = $path
+        break
+    }
+}
+
+# Case 1: Service exists - just update config
 if ($existingSysmon) {
     Write-Log "Sysmon already installed: $($existingSysmon.Name)" -Level Warning
     Write-Log "Updating configuration..." -Level Info
-
-    # Find Sysmon executable (could be in different locations)
-    $sysmonExe = $null
-    $possiblePaths = @(
-        "$sysmonDir\Sysmon64.exe",
-        "$sysmonDir\Sysmon.exe",
-        "C:\Windows\Sysmon64.exe",
-        "C:\Windows\Sysmon.exe"
-    )
-    foreach ($path in $possiblePaths) {
-        if (Test-Path $path) {
-            $sysmonExe = $path
-            break
-        }
-    }
 
     if (-not $sysmonExe) {
         # Try to find via service image path
@@ -108,6 +109,39 @@ if ($existingSysmon) {
         Write-Log "Configuration updated" -Level Success
     } else {
         Write-Log "Cannot find Sysmon executable, skipping config update" -Level Warning
+    }
+    exit 0
+}
+
+# Case 2: Files exist but service missing - install service
+if ($sysmonExe -and -not $existingSysmon) {
+    Write-Log "Sysmon files found but service missing. Installing service..." -Level Warning
+
+    # Get or download config
+    $configFile = "$sysmonDir\sysmonconfig.xml"
+    if (-not (Test-Path $configFile)) {
+        if ($ConfigPath -and (Test-Path $ConfigPath)) {
+            Copy-Item $ConfigPath -Destination $configFile
+        } else {
+            Write-Log "Downloading SwiftOnSecurity configuration..." -Level Info
+            Invoke-WebRequest -Uri $ConfigUrl -OutFile $configFile -UseBasicParsing
+        }
+    }
+
+    # Install with -accepteula
+    Write-Log "Installing Sysmon service..." -Level Info
+    $result = & $sysmonExe -accepteula -i $configFile 2>&1
+
+    Start-Sleep -Seconds 3
+    $sysmonService = Get-Service -Name "Sysmon*" -ErrorAction SilentlyContinue
+
+    if ($sysmonService -and $sysmonService.Status -eq "Running") {
+        Write-Log "Sysmon service installed and running!" -Level Success
+    } elseif ($sysmonService) {
+        Write-Log "Sysmon service installed: $($sysmonService.Status)" -Level Success
+        Start-Service -Name $sysmonService.Name -ErrorAction SilentlyContinue
+    } else {
+        Write-Log "Failed to install Sysmon service: $result" -Level Error
     }
     exit 0
 }

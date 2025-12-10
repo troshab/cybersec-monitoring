@@ -63,13 +63,19 @@ Write-Host "============================================================" -Foreg
 Write-Host ""
 
 # osquery MSI installs to different locations depending on version
-$possibleInstallDirs = @(
-    "C:\Program Files\osquery",
-    "${env:ProgramFiles}\osquery",
-    "${env:ProgramFiles(x86)}\osquery"
-)
-$installDir = $possibleInstallDirs[0]  # Default, will be updated after MSI install
+# Note: MSI often puts osqueryd.exe in a subfolder "osqueryd"
+$baseDir = "C:\Program Files\osquery"
+$installDir = $baseDir  # For config files (flags, secret)
 $tempDir = "$env:TEMP\osquery_install"
+
+# Possible locations of osqueryd.exe (MSI puts it in subfolder!)
+$possibleExePaths = @(
+    "$baseDir\osqueryd\osqueryd.exe",    # MSI default subfolder
+    "$baseDir\osqueryd.exe",              # Some versions
+    "${env:ProgramFiles}\osquery\osqueryd\osqueryd.exe",
+    "${env:ProgramFiles}\osquery\osqueryd.exe",
+    "C:\ProgramData\osquery\osqueryd.exe"
+)
 
 # Parse Fleet URL
 $fleetUri = [System.Uri]$FleetUrl
@@ -126,28 +132,33 @@ if ($process.ExitCode -ne 0) {
 
 Write-Log "Osquery встановлено" -Level Success
 
-# Find actual install directory after MSI
-foreach ($dir in $possibleInstallDirs) {
-    if (Test-Path "$dir\osqueryd.exe") {
-        $installDir = $dir
-        Write-Log "Знайдено osquery в: $installDir" -Level Info
+# Find osqueryd.exe - it's often in a subfolder!
+$osqueryExe = $null
+foreach ($path in $possibleExePaths) {
+    if (Test-Path $path) {
+        $osqueryExe = $path
+        Write-Log "Знайдено osqueryd: $osqueryExe" -Level Info
         break
     }
 }
 
-# Also check via registry
-if (-not (Test-Path "$installDir\osqueryd.exe")) {
-    $regPath = Get-ItemProperty -Path "HKLM:\SOFTWARE\osquery" -ErrorAction SilentlyContinue
-    if ($regPath -and $regPath.InstallPath) {
-        $installDir = $regPath.InstallPath
+# Also search recursively if not found
+if (-not $osqueryExe) {
+    $found = Get-ChildItem -Path $baseDir -Filter "osqueryd.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($found) {
+        $osqueryExe = $found.FullName
+        Write-Log "Знайдено osqueryd (recursive): $osqueryExe" -Level Info
     }
 }
 
-if (-not (Test-Path "$installDir\osqueryd.exe")) {
+if (-not $osqueryExe) {
     Write-Log "Не знайдено osqueryd.exe після встановлення MSI!" -Level Error
-    Write-Log "Перевірте встановлення вручну" -Level Warning
+    Write-Log "Перевірте вміст $baseDir вручну" -Level Warning
     exit 1
 }
+
+# osqueryi.exe is usually next to osqueryd.exe
+$osqueryiExe = Join-Path (Split-Path $osqueryExe -Parent) "osqueryi.exe"
 
 # =============================================================================
 # Завантаження сертифіката FleetDM
@@ -237,12 +248,7 @@ Write-Log "Конфігурацію створено" -Level Success
 # =============================================================================
 Write-Log "Запуск сервісу osqueryd..." -Level Info
 
-$osqueryExe = "$installDir\osqueryd.exe"
-
-if (-not (Test-Path $osqueryExe)) {
-    Write-Log "osqueryd.exe не знайдено в $installDir" -Level Error
-    exit 1
-}
+# $osqueryExe already set above from search
 
 # Зупинка якщо запущено
 Stop-Service -Name "osqueryd" -Force -ErrorAction SilentlyContinue
@@ -301,13 +307,17 @@ if ($service -and $service.Status -eq "Running") {
 # =============================================================================
 Write-Log "Тест osquery..." -Level Info
 
-try {
-    $osqueryResult = & "$installDir\osqueryi.exe" --json "SELECT * FROM system_info" 2>$null | ConvertFrom-Json
-    if ($osqueryResult) {
-        Write-Log "Osquery працює: $($osqueryResult.hostname)" -Level Success
+if (Test-Path $osqueryiExe) {
+    try {
+        $osqueryResult = & $osqueryiExe --json "SELECT * FROM system_info" 2>$null | ConvertFrom-Json
+        if ($osqueryResult) {
+            Write-Log "Osquery працює: $($osqueryResult.hostname)" -Level Success
+        }
+    } catch {
+        Write-Log "Osqueryi не відповідає (це може бути нормально)" -Level Warning
     }
-} catch {
-    Write-Log "Osqueryi не відповідає (це може бути нормально)" -Level Warning
+} else {
+    Write-Log "osqueryi.exe не знайдено для тестування" -Level Warning
 }
 
 # =============================================================================
