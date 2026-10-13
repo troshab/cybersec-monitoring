@@ -125,7 +125,8 @@ services:
       netdisco-db-init:
         condition: service_completed_successfully
     ports:
-      - "${NETDISCO_PORT:-5000}:5000"
+      # Loopback by default: the UI starts with guest admin access until no_auth is turned off.
+      - "${LOCAL_BIND_IP:-127.0.0.1}:${NETDISCO_PORT:-5000}:5000"
     volumes:
       # Local plugins and customizations
       - ./netdisco/nd-site-local:/home/netdisco/nd-site-local

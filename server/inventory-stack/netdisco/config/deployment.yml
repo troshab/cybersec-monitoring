@@ -22,8 +22,10 @@ database:
 # within the nd-site-local directory.
 site_local_files: true
 
-# set to true to globally disable authentication/login.
-# the user called "guest" has full admin/port-control rights.
+# First start only: no_auth is true so you can log in as "guest" and create a real admin
+# (Admin -> User Management). Then set no_auth: false and save; the daemons reload.
+# Until then the web UI is bound to LOCAL_BIND_IP (127.0.0.1 by default) - reach it via SSH tunnel.
+# Ref: https://github.com/netdisco/netdisco-docker#readme
 no_auth: true
 
 # --------------------
@@ -34,6 +36,7 @@ no_auth: true
 # define snmp communities here
 device_auth:
   - tag: 'default_v2_readonly'
-    community: 'public'
+    # Set the same value as SNMP_COMMUNITY in .env. Never leave the vendor default 'public'.
+    community: 'CHANGE_ME'
     read: true
     write: false
