@@ -131,12 +131,29 @@ check_os() {
     log_success "ОС: $PRETTY_NAME"
 }
 
+generate_fleet_cert() {
+    local cert_dir="$1"
+    if [[ -f "$cert_dir/fleet.crt" && -f "$cert_dir/fleet.key" ]]; then
+        log_info "TLS-сертифікат FleetDM вже існує ($cert_dir)"
+        return
+    fi
+    local server_ip="${MONITORING_SERVER_IP:?MONITORING_SERVER_IP не задано}"
+    mkdir -p "$cert_dir"
+    openssl req -x509 -nodes -days 825 -newkey rsa:2048 \
+        -keyout "$cert_dir/fleet.key" -out "$cert_dir/fleet.crt" \
+        -subj "/CN=${server_ip}/O=LAB/OU=FleetDM" \
+        -addext "subjectAltName=IP:${server_ip},IP:127.0.0.1,DNS:localhost" 2>/dev/null
+    chmod 644 "$cert_dir/fleet.crt"
+    chmod 600 "$cert_dir/fleet.key"
+    log_success "Створено самопідписаний сертифікат FleetDM для ${server_ip}"
+}
+
 check_env_file() {
     if [[ ! -f "$ENV_FILE" ]]; then
         log_error "Файл .env не знайдено: $ENV_FILE"
-        log_info "Скопіюйте .env.example в .env та налаштуйте:"
-        log_info "  cp $PROJECT_DIR/.env.example $PROJECT_DIR/.env"
-        log_info "  nano $PROJECT_DIR/.env"
+        log_info "Згенеруйте .env з випадковими секретами та заповніть решту значень:"
+        log_info "  $PROJECT_DIR/server/gen-env.sh"
+        log_info "  nano $PROJECT_DIR/.env   # PUSHOVER_*, SNMP_COMMUNITY, TARGET_*_PASSWORD"
         exit 1
     fi
 
@@ -394,6 +411,9 @@ deploy_inventory_stack() {
         envsubst < "$file" > "$file.tmp" && mv "$file.tmp" "$file"
     done
 
+    # TLS для FleetDM: сертифікат створюється на цьому хості, в git не зберігається
+    generate_fleet_cert "$INVENTORY_DIR/fleetdm/certs"
+
     # Запуск
     cd "$INVENTORY_DIR"
     docker compose up -d
@@ -453,7 +473,7 @@ setup_fleetdm() {
                 \"admin\": true,
                 \"email\": \"${GRAFANA_ADMIN_USER:-monadmin}@${TARGET_DOMAIN_FQDN:-lab.local}\",
                 \"name\": \"${GRAFANA_ADMIN_USER:-monadmin}\",
-                \"password\": \"${GRAFANA_ADMIN_PASSWORD:-Mon!123admin}\"
+                \"password\": \"${GRAFANA_ADMIN_PASSWORD}\"
             },
             \"org_info\": {
                 \"org_name\": \"${ORGANIZATION_NAME:-LAB Training}\"
@@ -486,7 +506,7 @@ setup_fleetdm() {
                 echo ""
                 echo -e "  URL: ${CYAN}https://${MONITORING_SERVER_IP}:${FLEET_PORT:-8080}${NC}"
                 echo -e "  Логін: ${CYAN}${GRAFANA_ADMIN_USER:-monadmin}@${TARGET_DOMAIN_FQDN:-lab.local}${NC}"
-                echo -e "  Пароль: ${CYAN}${GRAFANA_ADMIN_PASSWORD:-Mon!123admin}${NC}"
+                echo -e "  Пароль: ${CYAN}${GRAFANA_ADMIN_PASSWORD}${NC}"
                 echo ""
                 echo -e "  Enroll Secret: ${CYAN}${ENROLL_SECRET}${NC}"
                 echo ""
