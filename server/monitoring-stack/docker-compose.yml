@@ -144,6 +144,26 @@ services:
 # =============================================================================
 # Volumes
 # =============================================================================
+  # ===========================================================================
+  # SNMP Exporter - метрики мережевого обладнання (CIS IG1 4.2, 12.1; картки CF-02, NET-01)
+  # Community береться з SNMP_COMMUNITY у .env і пишеться в тимчасовий файл auth "org_v2"
+  # (snmp_exporter не підставляє змінні середовища в поле community).
+  # Ref: https://github.com/prometheus/snmp_exporter
+  # ===========================================================================
+  snmp-exporter:
+    image: prom/snmp-exporter:v0.30.1
+    container_name: snmp-exporter
+    restart: unless-stopped
+    environment:
+      SNMP_COMMUNITY: ${SNMP_COMMUNITY:?set SNMP_COMMUNITY in .env}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        printf 'auths:\n  org_v2:\n    community: "%s"\n    version: 2\n' "$$SNMP_COMMUNITY" > /tmp/auth.yml &&
+        exec /bin/snmp_exporter --config.file=/etc/snmp_exporter/snmp.yml --config.file=/tmp/auth.yml
+    networks:
+      - monitoring
+
 volumes:
   prometheus-data:
     driver: local

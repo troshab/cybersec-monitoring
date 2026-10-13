@@ -79,6 +79,7 @@
 | Loki | 3.7.8 | 2026-09-17 | `server/monitoring-stack/docker-compose.yml` |
 | Grafana | 13.2.3 | 2026-09-29 | `server/monitoring-stack/docker-compose.yml` |
 | Alertmanager | v0.34.1 | 2026-09-17 | `server/monitoring-stack/docker-compose.yml` |
+| SNMP Exporter | v0.30.1 | 2026-01-07 | `server/monitoring-stack/docker-compose.yml` (job `snmp-network` у `prometheus.yml`) |
 | Mailpit | v1.31.5 | 2026-10-11 | `server/monitoring-stack/docker-compose.yml` |
 | FleetDM | v4.93.0 | 2026-10-08 | `server/inventory-stack/docker-compose.yml` |
 | Netdisco | 2.111000 | 2026-10-09 | `server/inventory-stack/docker-compose.yml` |
