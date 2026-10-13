@@ -181,7 +181,7 @@ $currentStep = 0
 # Step 1: Audit Policy
 # =============================================================================
 $currentStep++
-Write-Banner "Step $currentStep/$totalSteps: Audit Policy Configuration"
+Write-Banner "Step $currentStep/${totalSteps}: Audit Policy Configuration"
 
 try {
     & "$CommonDir\01-Set-AuditPolicy.ps1"
@@ -194,7 +194,7 @@ try {
 # Step 2: PowerShell Logging
 # =============================================================================
 $currentStep++
-Write-Banner "Step $currentStep/$totalSteps: PowerShell Logging"
+Write-Banner "Step $currentStep/${totalSteps}: PowerShell Logging"
 
 try {
     & "$CommonDir\02-Enable-PowerShellLogging.ps1"
@@ -207,7 +207,7 @@ try {
 # Step 3: Sysmon
 # =============================================================================
 $currentStep++
-Write-Banner "Step $currentStep/$totalSteps: Sysmon Installation"
+Write-Banner "Step $currentStep/${totalSteps}: Sysmon Installation"
 
 if ($SkipSysmon) {
     Write-Log "Sysmon пропущено (-SkipSysmon)" -Level Warning
@@ -224,7 +224,7 @@ if ($SkipSysmon) {
 # Step 4: Grafana Alloy (replaces deprecated Promtail)
 # =============================================================================
 $currentStep++
-Write-Banner "Step $currentStep/$totalSteps: Grafana Alloy Installation"
+Write-Banner "Step $currentStep/${totalSteps}: Grafana Alloy Installation"
 
 try {
     $alloyConfig = Join-Path $ScriptDir "config.alloy"
@@ -242,7 +242,7 @@ try {
 # Step 5: Windows Exporter
 # =============================================================================
 $currentStep++
-Write-Banner "Step $currentStep/$totalSteps: Windows Exporter Installation"
+Write-Banner "Step $currentStep/${totalSteps}: Windows Exporter Installation"
 
 try {
     & "$CommonDir\05-Install-WindowsExporter.ps1"
@@ -255,7 +255,7 @@ try {
 # Step 6: Server Hardening
 # =============================================================================
 $currentStep++
-Write-Banner "Step $currentStep/$totalSteps: Server Hardening"
+Write-Banner "Step $currentStep/${totalSteps}: Server Hardening"
 
 if ($SkipHardening) {
     Write-Log "Hardening пропущено (-SkipHardening)" -Level Warning
@@ -277,7 +277,7 @@ if ($SkipHardening) {
 # Step 7: Role-specific Logging
 # =============================================================================
 $currentStep++
-Write-Banner "Step $currentStep/$totalSteps: Role-Specific Logging Configuration"
+Write-Banner "Step $currentStep/${totalSteps}: Role-Specific Logging Configuration"
 
 foreach ($role in $ServerRoles) {
     Write-Log "Налаштування логування для: $role" -Level Info
@@ -345,7 +345,7 @@ foreach ($role in $ServerRoles) {
 # Step 8: Osquery (optional)
 # =============================================================================
 $currentStep++
-Write-Banner "Step $currentStep/$totalSteps: Osquery Agent (Optional)"
+Write-Banner "Step $currentStep/${totalSteps}: Osquery Agent (Optional)"
 
 if ($SkipOsquery -or -not $FleetUrl) {
     Write-Log "Osquery пропущено" -Level Warning
