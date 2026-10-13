@@ -8,6 +8,7 @@
 
     Налаштовує:
     - Advanced Audit Policy
+    CIS IG1 8.2 - Collect audit logs (card LOG-02)
     - Command line logging для процесів
     - Розміри Event Log
 

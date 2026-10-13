@@ -69,6 +69,29 @@
 | Windows Exporter | Метрики Windows | Native |
 | Sysmon | Детальний моніторинг Windows | Native |
 
+## Версії компонентів
+
+Версії перевірено 2026-10-13 за датами релізів GitHub (`published_at`) і за пінами в репозиторії.
+
+| Компонент | Версія | Дата релізу | Джерело піна |
+|-----------|--------|-------------|--------------|
+| Prometheus | v3.15.0 | 2026-09-25 | `server/monitoring-stack/docker-compose.yml` |
+| Loki | 3.7.8 | 2026-09-17 | `server/monitoring-stack/docker-compose.yml` |
+| Grafana | 13.2.3 | 2026-09-29 | `server/monitoring-stack/docker-compose.yml` |
+| Alertmanager | v0.34.1 | 2026-09-17 | `server/monitoring-stack/docker-compose.yml` |
+| Mailpit | v1.31.5 | 2026-10-11 | `server/monitoring-stack/docker-compose.yml` |
+| FleetDM | v4.93.0 | 2026-10-08 | `server/inventory-stack/docker-compose.yml` |
+| Netdisco | 2.111000 | 2026-10-09 | `server/inventory-stack/docker-compose.yml` |
+| MySQL (БД Fleet) | 8.4 | не перевірено (образ mysql:8.4) | `server/inventory-stack/docker-compose.yml` |
+| Redis | 7.4-alpine | не перевірено (образ redis:7.4-alpine) | `server/inventory-stack/docker-compose.yml` |
+| Node Exporter | 1.12.1 | 2026-07-14 | `linux-agent/install-agent.sh` |
+| osquery (Linux) | 5.23.1 | 2026-06-24 | `linux-agent/install-agent.sh` |
+| Grafana Alloy | v1.20.1 (актуальна на перевірку, не запінена) | 2026-09-28 | встановлюється з репозиторію Grafana |
+| Windows Exporter | v0.31.9 | 2026-10-10 | host-agent піни |
+| restic | 0.19.1 | 2026-07-05 | `posture/backup/*` (вимога в заголовках) |
+| UAC (IR, Linux) | 2.9.1 (піна в репо; актуальна v3.4.0, 2026-09-09) | - | `incident-response/linux/install-uac.sh` |
+| Sysmon (Windows) | не запінено, ставиться з Sysinternals | - | `windows-common/03-Install-Sysmon.ps1` |
+
 ## Системні вимоги
 
 ### Сервер моніторингу
@@ -200,6 +223,15 @@ cybersec-monitoring/
         └── kali/             # 7 Bash тестів
 ```
 
+## Posture-шар (CIS IG1)
+
+Posture-шар перевіряє базову лінію CIS Controls v8.1 IG1 (56 завдань). Картки і маппінг на CIS IG1 - у `posture/osquery/ig1-posture.yml` (заголовки містять ID картки і CIS ID).
+
+- **Drift-перевірки пристроїв (Fleet/osquery).** Пакет застосовується командою `fleetctl apply -f posture/osquery/ig1-posture.yml`. Запити названо `ig1_<ID картки>_<платформа>`, наприклад `ig1_BK-02_windows`. Запити, які не покриті цим пакетом (NET-01, LOG-01, LOG-03, BK-01, BK-03, BK-04, AS-02, DA-04), перелічено в коментарі на початку файлу з причиною.
+- **Алерти (Prometheus).** `server/monitoring-stack/prometheus/alerts/posture-alerts.yml` підхоплюється через `rule_files` (`/etc/prometheus/alerts/*.yml`). Правила `BackupTooOld` (BK-02, CIS 11.2, більше 48 годин) і `RestoreTestOverdue` (BK-01, CIS 11.1, більше 90 днів).
+- **Дашборд Grafana.** `IG1 Posture` (`grafana/dashboards/08-ig1-posture.json`) завантажується через provisioning.
+- **Резервні копії (restic).** Встановіть restic 0.19.1. Задайте `RESTIC_REPOSITORY` і `RESTIC_PASSWORD_FILE` з файлом пароля поза репозиторієм: Linux - `0600`, власник root; Windows - файл з обмеженим ACL. Скрипти `posture/backup/linux/backup.sh` і `posture/backup/windows/backup.ps1` записують метрику `backup_last_success_timestamp_seconds`; `restore-test.sh` і `restore-test.ps1` записують `backup_last_restore_test_timestamp_seconds`. Textfile для Windows: `C:\Program Files\windows_exporter\textfile_inputs` (параметр `-TextfileDir`), для Linux: `/var/lib/node_exporter/textfile`. Запускайте backup і restore-test за розкладом.
+
 ## Дашборди
 
 | Дашборд | Призначення |
@@ -212,6 +244,7 @@ cybersec-monitoring/
 | 05-alerts-summary | Активні алерти |
 | 06-inventory-status | Інвентаризація хостів |
 | 07-morning-coffee | Щоденний огляд безпеки (15 хв) |
+| 08-ig1-posture | Стан CIS IG1: вік резервних копій, перевірка відновлення, алерти posture |
 
 ## Критичні Event IDs
 
@@ -268,6 +301,13 @@ cd testing/detection-testing/kali
 # 06-test-exfiltration.sh  - Data exfiltration
 # 07-test-persistence.sh   - Backdoors, C2
 ```
+
+## Безпека
+
+- **Скомпрометовано: ключ Fleet і паролі лабораторії.** Раніше в git були закомічені ключ Fleet і паролі лабораторного середовища (`Mon!123admin`, `kali/kali`). Розглядайте їх як скомпрометовані: ротуйте ключ Fleet, JWT-ключі й усі паролі перед будь-яким використанням поза лабораторією. Історія git зберігає їх; для повного усунення потрібно переписати історію або створити новий репозиторій.
+- **Секрети.** `.env` не відстежується, шаблон - `.env.example`; значення генеруються `server/gen-env.sh`. Порти моніторингу прив'язані до loopback. `--web.enable-admin-api` вимкнено.
+- **Retention Loki 6 місяців.** Це рекомендація, не вимога CERT-UA.
+- **Резервні копії.** Пароль restic тримайте поза репозиторієм (див. розділ Posture-шар).
 
 ## Lab Environment
 

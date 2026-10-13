@@ -8,6 +8,7 @@
     - PowerShell logging (from windows-common)
     - Telemetry disable (optional)
     - Security hardening (SMB, firewall, PtH protection, etc.)
+    CIS IG1 4.5 - Firewall on end-user devices (card CF-05)
 
 .PARAMETER SkipTelemetry
     Skip telemetry disabling

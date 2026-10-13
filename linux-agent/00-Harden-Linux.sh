@@ -5,9 +5,11 @@
 # Applies basic security hardening:
 # - SSH hardening
 # - Firewall (ufw)
+#   CIS IG1 4.4 - Firewall on servers (ufw), see card CF-04
 # - Kernel security parameters
 # - Service hardening
 # - Audit rules
+#   CIS IG1 8.2 - Collect audit logs (auditd rules), see card LOG-02
 #
 # Usage: sudo ./00-Harden-Linux.sh
 #
