@@ -36,7 +36,7 @@ services:
   # ---------------------------------------------------------------------------
   netdisco-postgresql:
     container_name: netdisco-postgresql
-    image: netdisco/netdisco:latest-postgresql
+    image: netdisco/netdisco:2.111000-postgresql
     shm_size: 128mb
     hostname: netdisco-postgresql
     restart: unless-stopped
@@ -55,7 +55,7 @@ services:
   # ---------------------------------------------------------------------------
   netdisco-db-init:
     container_name: netdisco-db-init
-    image: netdisco/netdisco:latest-backend
+    image: netdisco/netdisco:2.111000-backend
     entrypoint: ''
     command: "/home/netdisco/bin/netdisco-env /home/netdisco/bin/netdisco-updatedb.sh"
     user: postgres
@@ -81,7 +81,7 @@ services:
   # Ref: https://github.com/netdisco/netdisco-docker
   # ---------------------------------------------------------------------------
   netdisco-backend:
-    image: netdisco/netdisco:latest-backend
+    image: netdisco/netdisco:2.111000-backend
     container_name: netdisco-backend
     hostname: netdisco-backend
     restart: unless-stopped
@@ -115,7 +115,7 @@ services:
   # Ref: https://github.com/netdisco/netdisco-docker
   # ---------------------------------------------------------------------------
   netdisco-web:
-    image: netdisco/netdisco:latest-web
+    image: netdisco/netdisco:2.111000-web
     container_name: netdisco-web
     hostname: netdisco-web
     restart: unless-stopped
@@ -197,7 +197,7 @@ services:
   # FleetDM Server
   # ---------------------------------------------------------------------------
   fleet:
-    image: fleetdm/fleet:v4.61.0
+    image: fleetdm/fleet:v4.93.0
     container_name: fleet-server
     restart: unless-stopped
     depends_on:
