@@ -490,8 +490,8 @@ kind: query
 spec:
   # VM-03 | CIS IG1 7.3 | Drift: Windows Update disabled by policy or last update result failed.
   name: ig1_vm_03_windows
-  description: "VM-03 (CIS IG1 7.3): історія оновлень Windows. Drift: result_code не успішний або політика вимикає Windows Update."
-  query: SELECT date, title, result_code FROM windows_update_history ORDER BY date DESC LIMIT 20;
+  description: "VM-03 (CIS IG1 7.3): історія оновлень Windows і політика автооновлення. Drift: останнє успішне оновлення старше 35 днів, невдалі result_code, або NoAutoUpdate=1 у політиці."
+  query: SELECT 'history' AS kind, CAST(date AS TEXT) AS date, title AS item, CAST(result_code AS TEXT) AS value FROM (SELECT date, title, result_code FROM windows_update_history ORDER BY date DESC LIMIT 20) UNION ALL SELECT 'policy' AS kind, '' AS date, name AS item, data AS value FROM registry WHERE key = 'HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' AND name IN ('NoAutoUpdate', 'AUOptions');
   platform: windows
   interval: 86400
   observer_can_run: false
