@@ -1,0 +1,504 @@
+# =============================================================================
+# CIS IG1 posture queries for Fleet (osquery)
+# =============================================================================
+# Apply:   fleetctl apply -f posture/osquery/ig1-posture.yml
+# Naming:  ig1_<CARD-ID>           cross-platform query
+#          ig1_<CARD-ID>_windows   Windows-only query
+#          ig1_<CARD-ID>_linux     Linux-only query
+# Each document describes: card ID, CIS IG1 safeguard ID, drift condition.
+# Results are read in Fleet (Queries / host Query results). Interval is daily
+# (86400 s); the query is a drift check, not an alert. Drift alerts for backups
+# are in server/monitoring-stack/prometheus/alerts/posture-alerts.yml.
+#
+# Cards intentionally NOT covered by an osquery query:
+#   NET-01  network equipment vendor support  - router/switch is not an osquery host;
+#           checked from the device inventory (Netdisco) and vendor EOL list.
+#   LOG-01  agreed log sources and places     - a policy document, not a host state.
+#   LOG-03  logs kept long enough             - retention is a Loki/server setting
+#           (see server/monitoring-stack/loki), not visible to osquery.
+#   BK-01   restore tested in practice        - a manual procedure; the date is tracked
+#           by backup_last_restore_test_timestamp_seconds (posture-alerts.yml).
+#   BK-03   backup protected from ransomware  - needs immutable storage / account
+#           settings outside the host.
+#   BK-04   offline backup copy               - physical media / offline status is not
+#           observable from the host.
+#   AS-02   unknown device on the network     - covered by Netdisco discovery, not by
+#           a per-host query.
+#   DA-04   how long data is kept             - policy document; retention settings are
+#           in the Loki config.
+#
+# Tables used are listed at fleetdm.com/tables (verified 2026-10-13):
+#   system_info, os_version, programs, deb_packages, file, users, groups,
+#   user_groups, last, logon_sessions, shared_resources, bitlocker_info,
+#   disk_encryption, dns_resolvers, iptables, processes, services, registry,
+#   windows_security_center, windows_security_products, windows_update_history.
+# Verified against osquery/osquery:5.17.0-ubuntu22.04 for Linux SQL.
+# =============================================================================
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # AS-01 | CIS IG1 1.1 | Drift: host has no serial or name matching the asset register.
+  name: ig1_AS-01
+  description: "AS-01 (CIS IG1 1.1): ідентичність пристрою для звірки з реєстром активів. Drift: порожній hardware_serial або ім'я, якого немає в реєстрі."
+  query: SELECT hardware_serial, computer_name, hostname FROM system_info;
+  platform: "darwin,linux,windows"
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # AS-03 | CIS IG1 2.1 | Drift: installed program not in the approved software list.
+  name: ig1_AS-03_windows
+  description: "AS-03 (CIS IG1 2.1): встановлені програми Windows. Drift: програма, якої немає у переліку погоджених програм."
+  query: SELECT name, version, publisher FROM programs;
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # AS-03 | CIS IG1 2.1 | Drift: package not in the approved software list.
+  name: ig1_AS-03_linux
+  description: "AS-03 (CIS IG1 2.1): встановлені deb-пакети. Drift: пакет, якого немає у переліку погоджених програм."
+  query: SELECT name, version FROM deb_packages;
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # AS-04 | CIS IG1 2.2 | Drift: OS version past vendor end of support (check against vendor EOL list).
+  name: ig1_AS-04
+  description: "AS-04 (CIS IG1 2.2): версія ОС для звірки з датою завершення підтримки виробника. Drift: ОС поза підтримкою."
+  query: SELECT name, version, build, platform FROM os_version;
+  platform: "linux,windows"
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # AS-05 | CIS IG1 2.3 | Drift: third-party apt repository added without approval.
+  name: ig1_AS-05_linux
+  description: "AS-05 (CIS IG1 2.3): сторонні apt-репозиторії. Drift: файл репозиторію, якого немає у погодженому переліку."
+  query: SELECT path, mtime FROM file WHERE directory = '/etc/apt/sources.list.d';
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # AS-05 | CIS IG1 2.3 | Drift: non-Microsoft program installed without approval.
+  name: ig1_AS-05_windows
+  description: "AS-05 (CIS IG1 2.3): програми не від Microsoft. Drift: сторонній видавець, якого немає у погодженому переліку."
+  query: SELECT name, publisher, version FROM programs WHERE publisher NOT LIKE 'Microsoft%' OR publisher IS NULL;
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # AC-01 | CIS IG1 5.1 | Drift: local account with no owner in the account register.
+  name: ig1_AC-01
+  description: "AC-01 (CIS IG1 5.1): облікові записи пристрою. Drift: обліковий запис без власника в реєстрі акаунтів."
+  query: SELECT uid, username, description, directory FROM users;
+  platform: "linux,windows"
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # AC-03 | CIS IG1 5.3 | Drift: last user login older than 90 days (epoch seconds).
+  name: ig1_AC-03_linux
+  description: "AC-03 (CIS IG1 5.3): останній вхід користувача. Drift: last_login старший за 90 днів, обліковий запис варто вимкнути."
+  query: SELECT username, MAX(time) AS last_login_epoch FROM last WHERE type = 'user' GROUP BY username;
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # AC-03 | CIS IG1 5.3 | Drift: interactive session for an account not in the account register.
+  name: ig1_AC-03_windows
+  description: "AC-03 (CIS IG1 5.3): активні інтерактивні сесії Windows. Drift: сесія для акаунта, якого немає в реєстрі."
+  query: SELECT user, logon_domain, logon_type, logon_time FROM logon_sessions WHERE logon_type IN (2, 10, 11);
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # AC-04 | CIS IG1 5.4 | Drift: administrator-group member who is also used for daily work (review against the admin register).
+  name: ig1_AC-04_linux
+  description: "AC-04 (CIS IG1 5.4): члени адмін-груп Linux. Drift: адмін-права у звичайного користувача або акаунта без окремого адмін-облікового запису."
+  query: SELECT g.groupname, u.username FROM user_groups ug JOIN groups g ON g.gid = ug.gid JOIN users u ON u.uid = ug.uid WHERE g.groupname IN ('sudo', 'admin', 'adm');
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # AC-04 | CIS IG1 5.4 | Drift: member of Administrators who is not in the admin register.
+  name: ig1_AC-04_windows
+  description: "AC-04 (CIS IG1 5.4): члени групи Administrators. Drift: адмін-права у акаунта, якого немає в адмін-реєстрі."
+  query: SELECT g.groupname, u.username FROM user_groups ug JOIN groups g ON g.gid = ug.gid JOIN users u ON u.uid = ug.uid WHERE g.groupname = 'Administrators';
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # DA-03 | CIS IG1 3.3 | Drift: shadow/sshd files readable by others or owned by a non-root user.
+  name: ig1_DA-03_linux
+  description: "DA-03 (CIS IG1 3.3): права на файли з паролями й SSH. Drift: режим доступу ширший за 0640 або власник не root."
+  query: SELECT path, mode, uid, gid FROM file WHERE path IN ('/etc/shadow', '/etc/gshadow', '/etc/ssh/sshd_config');
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # DA-03 | CIS IG1 3.3 | Drift: network share that is not in the approved list.
+  name: ig1_DA-03_windows
+  description: "DA-03 (CIS IG1 3.3): мережеві папки Windows. Drift: спільний ресурс, якого немає в погодженому переліку."
+  query: SELECT name, path, description FROM shared_resources;
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # DA-06 | CIS IG1 3.6 | Drift: system or data volume not encrypted.
+  name: ig1_DA-06_windows
+  description: "DA-06 (CIS IG1 3.6): BitLocker. Drift: protection_status != 1 (захист вимкнено) або conversion_status не повне шифрування на системному диску."
+  query: SELECT drive_letter, protection_status, conversion_status, encryption_method FROM bitlocker_info;
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # DA-06 | CIS IG1 3.6 | Drift: block device with encrypted = 0.
+  name: ig1_DA-06_linux
+  description: "DA-06 (CIS IG1 3.6): шифрування блочних пристроїв Linux. Drift: encrypted = 0 на диску з даними."
+  query: SELECT name, type, encrypted, uuid FROM disk_encryption;
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # CF-02 | CIS IG1 4.2 | Drift: DNS resolver outside the approved internal list.
+  name: ig1_CF-02_linux
+  description: "CF-02 (CIS IG1 4.2): DNS-резолвери Linux. Drift: зовнішній або невідомий резолвер."
+  query: SELECT address, type FROM dns_resolvers WHERE type = 'nameserver';
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # CF-03 | CIS IG1 4.3 | Drift: screen lock policy missing or timeout > 900 s (15 min).
+  name: ig1_CF-03_windows
+  description: "CF-03 (CIS IG1 4.3): політика блокування екрана. Drift: ScreenSaverIsSecure не 1 або ScreenSaveTimeOut більший за 900."
+  query: SELECT key, name, data FROM registry WHERE key = 'HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Control Panel\Desktop' AND name IN ('ScreenSaveActive', 'ScreenSaverIsSecure', 'ScreenSaveTimeOut');
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # CF-04 | CIS IG1 4.4 | Drift: iptables INPUT policy ACCEPT on a server (check with the ufw ruleset).
+  name: ig1_CF-04_linux
+  description: "CF-04 (CIS IG1 4.4): політика INPUT/FORWARD на Linux-сервері. Drift: policy ACCEPT без правил фаєрвола (ufw)."
+  query: SELECT chain, policy FROM iptables WHERE filter_name = 'filter' AND chain IN ('INPUT', 'FORWARD');
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # CF-05 | CIS IG1 4.5 | Drift: Windows Firewall reported as off by Security Center.
+  name: ig1_CF-05_windows
+  description: "CF-05 (CIS IG1 4.5): стан фаєрвола, антивіруса й оновлень за Windows Security Center. Drift: значення firewall, antivirus або autoupdate не \"Good\"."
+  query: SELECT firewall, antivirus, autoupdate, user_account_control FROM windows_security_center;
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # CF-07 | CIS IG1 4.7 | Drift: default or factory account present on the host.
+  name: ig1_CF-07_linux
+  description: "CF-07 (CIS IG1 4.7): типові заводські акаунти Linux. Drift: обліковий запис за замовчуванням існує на пристрої."
+  query: SELECT username, uid, directory FROM users WHERE username IN ('pi', 'ubuntu', 'vagrant', 'admin', 'guest', 'test', 'user');
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # CF-07 | CIS IG1 4.7 | Drift: built-in default account present (Guest must stay disabled; verify its state on the host).
+  name: ig1_CF-07_windows
+  description: "CF-07 (CIS IG1 4.7): вбудовані акаунти Windows. Drift: Guest або інший типовий акаунт присутній у списку користувачів."
+  query: SELECT username, uid, directory FROM users WHERE username IN ('Guest', 'DefaultAccount', 'WDAGUtilityAccount');
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # EW-01 | CIS IG1 9.1 | Drift: browser or mail client version older than the vendor's current release.
+  name: ig1_EW-01_windows
+  description: "EW-01 (CIS IG1 9.1): версії браузерів і поштових програм Windows. Drift: версія старша за поточний випуск виробника."
+  query: SELECT name, version FROM programs WHERE name LIKE '%Chrome%' OR name LIKE '%Firefox%' OR name LIKE '%Edge%' OR name LIKE '%Thunderbird%' OR name LIKE '%Outlook%';
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # EW-01 | CIS IG1 9.1 | Drift: browser or mail client version older than the vendor's current release.
+  name: ig1_EW-01_linux
+  description: "EW-01 (CIS IG1 9.1): версії браузерів і поштових програм Linux. Drift: версія старша за поточний випуск виробника."
+  query: SELECT name, version FROM deb_packages WHERE name IN ('firefox', 'thunderbird', 'chromium', 'chromium-browser', 'google-chrome-stable');
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # EW-02 | CIS IG1 9.2 | Drift: Safe Browsing / SmartScreen policy value absent or 0.
+  name: ig1_EW-02_windows
+  description: "EW-02 (CIS IG1 9.2): політики безпечного перегляду Chrome і Edge. Drift: політика не задана або вимкнена."
+  query: SELECT key, name, data FROM registry WHERE (key = 'HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome' AND name = 'SafeBrowsingProtectionLevel') OR (key = 'HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge' AND name = 'SmartScreenEnabled');
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # MW-01 | CIS IG1 10.1 | Drift: Windows antivirus product not in state enabled, or Linux AV daemon not running.
+  name: ig1_MW-01_windows
+  description: "MW-01 (CIS IG1 10.1): антивірус Windows. Drift: state не у стані захисту або продукт не зареєстровано в Security Center."
+  query: SELECT name, type, state, signatures_up_to_date FROM windows_security_products;
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # MW-01 | CIS IG1 10.1 | Drift: no ClamAV daemon process on a Linux server that must run one.
+  name: ig1_MW-01_linux
+  description: "MW-01 (CIS IG1 10.1): процеси антивіруса Linux. Drift: процес clamd відсутній там, де він має працювати."
+  query: SELECT name, pid FROM processes WHERE name LIKE 'clamd%' OR name LIKE 'freshclam%';
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # MW-02 | CIS IG1 10.2 | Drift: signatures_up_to_date = 0.
+  name: ig1_MW-02_windows
+  description: "MW-02 (CIS IG1 10.2): актуальність сигнатур антивіруса Windows. Drift: signatures_up_to_date = 0."
+  query: SELECT name, signatures_up_to_date, state_timestamp FROM windows_security_products;
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # MW-02 | CIS IG1 10.2 | Drift: ClamAV package version older than the vendor release.
+  name: ig1_MW-02_linux
+  description: "MW-02 (CIS IG1 10.2): версія ClamAV Linux. Drift: версія старша за поточний випуск виробника."
+  query: SELECT name, version FROM deb_packages WHERE name LIKE 'clamav%';
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # MW-03 | CIS IG1 10.3 | Drift: AutoRun not disabled for removable media, or ASR rule key missing.
+  name: ig1_MW-03_windows
+  description: "MW-03 (CIS IG1 10.3): автозапуск і правила ASR. Drift: NoDriveTypeAutoRun не задано або ключ правил ASR відсутній."
+  query: SELECT key, name, data FROM registry WHERE (key = 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer' AND name = 'NoDriveTypeAutoRun') OR key = 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules';
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # VM-03 | CIS IG1 7.3 | Drift: unattended-upgrades not installed.
+  name: ig1_VM-03_linux
+  description: "VM-03 (CIS IG1 7.3): автоматичні оновлення ОС Linux. Drift: пакет unattended-upgrades відсутній або файл 20auto-upgrades відсутній."
+  query: SELECT name, version FROM deb_packages WHERE name = 'unattended-upgrades' UNION SELECT path, mtime FROM file WHERE path = '/etc/apt/apt.conf.d/20auto-upgrades';
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # VM-03 | CIS IG1 7.3 | Drift: Windows Update disabled by policy or last update result failed.
+  name: ig1_VM-03_windows
+  description: "VM-03 (CIS IG1 7.3): історія оновлень Windows. Drift: result_code не успішний або політика вимикає Windows Update."
+  query: SELECT date, title, result_code FROM windows_update_history ORDER BY date DESC LIMIT 20;
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # VM-04 | CIS IG1 7.4 | Drift: application update service missing or disabled.
+  name: ig1_VM-04_windows
+  description: "VM-04 (CIS IG1 7.4): служби автооновлення програм Windows. Drift: служба оновлення Google, Edge або Windows Update відсутня чи вимкнена."
+  query: SELECT name, status, start_type FROM services WHERE name IN ('gupdate', 'edgeupdate', 'wuauserv');
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # LOG-02 | CIS IG1 8.2 | Drift: log/metrics agent not running on the host.
+  name: ig1_LOG-02_windows
+  description: "LOG-02 (CIS IG1 8.2): агенти журналів і метрик Windows. Drift: windows_exporter або Alloy не запущено."
+  query: SELECT name, status, start_type FROM services WHERE name IN ('windows_exporter', 'Alloy');
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # LOG-02 | CIS IG1 8.2 | Drift: log/metrics agent not running on the host.
+  name: ig1_LOG-02_linux
+  description: "LOG-02 (CIS IG1 8.2): агенти журналів і метрик Linux. Drift: node_exporter або alloy не запущено."
+  query: SELECT name, pid FROM processes WHERE name IN ('node_exporter', 'alloy');
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # BK-02 | CIS IG1 11.2 | Drift: backup textfile metric missing or older than 2 days.
+  name: ig1_BK-02_linux
+  description: "BK-02 (CIS IG1 11.2): файл метрик резервних копій Linux. Drift: backup*.prom відсутній або mtime старший за 2 дні."
+  query: SELECT path, mtime, size FROM file WHERE directory = '/var/lib/node_exporter/textfile' AND filename LIKE 'backup%';
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+
+---
+apiVersion: v1
+kind: query
+spec:
+  # BK-02 | CIS IG1 11.2 | Drift: backup textfile metric missing or older than 2 days.
+  name: ig1_BK-02_windows
+  description: "BK-02 (CIS IG1 11.2): файл метрик резервних копій Windows. Drift: backup*.prom відсутній або mtime старший за 2 дні."
+  query: SELECT filename, path, mtime, size FROM file WHERE directory = 'C:\Program Files\windows_exporter\textfile_inputs' AND filename LIKE 'backup%';
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
