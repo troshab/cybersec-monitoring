@@ -437,6 +437,7 @@ User=root
 ExecStart=${INSTALL_DIR}/node_exporter \\
     --collector.systemd \\
     --collector.processes \\
+    --collector.textfile.directory=/var/lib/node_exporter/textfile \\
     --collector.filesystem.mount-points-exclude="^/(sys|proc|dev|host|etc)(\$|/)" \\
     --web.listen-address=":9100"
 Restart=always
@@ -447,6 +448,7 @@ WantedBy=multi-user.target
 EOF
 
     systemctl daemon-reload
+    mkdir -p /var/lib/node_exporter/textfile
     systemctl enable node_exporter
     systemctl start node_exporter
 

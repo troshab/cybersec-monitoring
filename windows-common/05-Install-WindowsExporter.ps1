@@ -19,7 +19,7 @@
     .\05-Install-WindowsExporter.ps1
 
 .EXAMPLE
-    .\05-Install-WindowsExporter.ps1 -ListenPort 9182 -Collectors "cpu,memory,logical_disk,net,service"
+    .\05-Install-WindowsExporter.ps1 -ListenPort 9182 -Collectors "cpu,memory,logical_disk,net,service,textfile"
 
 .NOTES
     Порт 9182 повинен бути відкритий в firewall для Prometheus
@@ -31,7 +31,7 @@
 param(
     [string]$ExporterVersion = "0.31.9",
     [int]$ListenPort = 9182,
-    [string]$Collectors = "cpu,logical_disk,memory,net,os,process,service,system,tcp"
+    [string]$Collectors = "cpu,logical_disk,memory,net,os,process,service,system,tcp,textfile"
 )
 
 $ErrorActionPreference = "Stop"
