@@ -58,7 +58,7 @@ chmod +x *.sh
 ./run-all-tests.sh -t 10.0.1.4 -d 30
 
 # Run with credentials for lateral movement tests
-./run-all-tests.sh -t 10.0.1.3 -u monadmin -p 'Mon!123admin'
+./run-all-tests.sh -t 10.0.1.3 -u monadmin -p "$TARGET_SERVER_PASSWORD"
 ```
 
 ## Safety Notes

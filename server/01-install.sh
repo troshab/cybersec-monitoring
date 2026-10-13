@@ -267,10 +267,8 @@ setup_hardening() {
     ufw allow from 172.16.0.0/12 to any port "${LOKI_PORT:-3100}" comment "Loki"
     ufw allow from 192.168.0.0/16 to any port "${LOKI_PORT:-3100}" comment "Loki"
 
-    # Prometheus (internal)
-    ufw allow from 10.0.0.0/8 to any port "${PROMETHEUS_PORT:-9090}" comment "Prometheus"
-    ufw allow from 172.16.0.0/12 to any port "${PROMETHEUS_PORT:-9090}" comment "Prometheus"
-    ufw allow from 192.168.0.0/16 to any port "${PROMETHEUS_PORT:-9090}" comment "Prometheus"
+    # Prometheus: NO LAN rule. Compose binds it to LOCAL_BIND_IP (127.0.0.1).
+    # Docker-published ports bypass ufw, so the bind address is the real control.
 
     # Syslog UDP
     ufw allow 514/udp comment "Syslog"

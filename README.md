@@ -148,7 +148,7 @@ sudo ./linux-agent/00-Harden-Linux.sh
 ### 6. Перевірка роботи
 
 1. Відкрийте Grafana: `http://10.0.1.2:3000`
-2. Логін: admin / (пароль з .env)
+2. Логін: monadmin / (пароль GRAFANA_ADMIN_PASSWORD з .env)
 3. Перевірте дашборд "Security Overview"
 
 > **Примітка щодо FleetDM:** Для lab environment використовуються self-signed сертифікати. 
