@@ -15,10 +15,13 @@
 # Query names per card (grep "name: ig1_" for the authoritative list):
 #   Card   CIS IG1  Query name(s)
 #   AS-01  1.1      ig1_as_01
+#   AS-02  1.2      ig1_as_02
 #   AS-03  2.1      ig1_as_03_windows, ig1_as_03_linux
 #   AS-04  2.2      ig1_as_04
 #   AS-05  2.3      ig1_as_05_linux, ig1_as_05_windows
 #   AC-01  5.1      ig1_ac_01
+#   AC-08  6.4      ig1_ac_08_windows, ig1_ac_08_linux
+#   AC-09  6.5      ig1_ac_09_linux (Windows: ig1_ac_04_windows)
 #   AC-03  5.3      ig1_ac_03_linux, ig1_ac_03_windows
 #   AC-04  5.4      ig1_ac_04_linux, ig1_ac_04_windows
 #   DA-03  3.3      ig1_da_03_linux, ig1_da_03_windows
@@ -51,7 +54,7 @@
 #           settings outside the host (append-only rest-server, see posture/backup).
 #   BK-04   offline backup copy               - physical media / offline status is not
 #           observable from the host.
-#   AS-02   unknown device on the network     - covered by Netdisco discovery, not by
+#   (AS-02 now covered by ig1_as_02)   unknown device on the network     - covered by Netdisco discovery, not by
 #           a per-host query.
 #   DA-04   how long data is kept             - policy document; retention settings are
 #           in the Loki config.
@@ -558,6 +561,54 @@ spec:
   description: "BK-02 (CIS IG1 11.2): файл метрик резервних копій Windows. Drift: backup*.prom відсутній або mtime старший за 2 дні."
   query: SELECT filename, path, mtime, size FROM file WHERE directory = 'C:\Program Files\windows_exporter\textfile_inputs' AND filename LIKE 'backup%';
   platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+---
+apiVersion: v1
+kind: query
+spec:
+  # AS-02 | CIS IG1 1.2
+  name: ig1_as_02
+  description: "AS-02 (CIS IG1 1.2): сусіди в ARP-кеші хоста. Drift: MAC-адреса, якої немає в інвентарі (Netdisco/Fleet), - невідомий пристрій у сегменті."
+  query: SELECT address, mac, interface FROM arp_cache WHERE permanent = '0';
+  platform: darwin,linux,windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+---
+apiVersion: v1
+kind: query
+spec:
+  # AC-08 | CIS IG1 6.4
+  name: ig1_ac_08_windows
+  description: "AC-08 (CIS IG1 6.4): RDP на хості. Drift: fDenyTSConnections=0 (RDP увімкнено) на хості без погодженого віддаленого доступу або UserAuthentication=0 (вимкнено NLA)."
+  query: SELECT name, data FROM registry WHERE key = 'HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server' AND name = 'fDenyTSConnections' UNION ALL SELECT name, data FROM registry WHERE key = 'HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' AND name = 'UserAuthentication';
+  platform: windows
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+---
+apiVersion: v1
+kind: query
+spec:
+  # AC-08 | CIS IG1 6.4
+  name: ig1_ac_08_linux
+  description: "AC-08 (CIS IG1 6.4): налаштування входу sshd. Drift: PasswordAuthentication yes або PermitRootLogin yes; без AuthenticationMethods з другим фактором на хостах, доступних ззовні."
+  query: SELECT label, value FROM augeas WHERE path = '/etc/ssh/sshd_config' AND label IN ('PasswordAuthentication', 'PermitRootLogin', 'KbdInteractiveAuthentication', 'AuthenticationMethods');
+  platform: linux
+  interval: 86400
+  observer_can_run: false
+  automations_enabled: false
+---
+apiVersion: v1
+kind: query
+spec:
+  # AC-09 | CIS IG1 6.5
+  name: ig1_ac_09_linux
+  description: "AC-09 (CIS IG1 6.5): правила sudo. Drift: правило NOPASSWD або користувач/група з правами root, яких немає в погодженому переліку адміністраторів."
+  query: SELECT source, header, rule_details FROM sudoers;
+  platform: linux
   interval: 86400
   observer_can_run: false
   automations_enabled: false
