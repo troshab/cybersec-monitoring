@@ -265,8 +265,8 @@ kind: query
 spec:
   # CF-02 | CIS IG1 4.2 | Drift: DNS resolver outside the approved internal list.
   name: ig1_cf_02_linux
-  description: "CF-02 (CIS IG1 4.2): DNS-резолвери Linux. Drift: зовнішній або невідомий резолвер."
-  query: SELECT address, type FROM dns_resolvers WHERE type = 'nameserver';
+  description: "CF-02 (CIS IG1 4.2): службові порти керування, відкриті на всіх інтерфейсах (SSH, Telnet, SMB, RDP, WinRM, веб-адмінки). Drift: порт керування слухає 0.0.0.0/:: на хості, де це не погоджено."
+  query: SELECT DISTINCT lp.port, lp.address, lp.protocol, p.name AS process FROM listening_ports lp LEFT JOIN processes p USING (pid) WHERE lp.address IN ('0.0.0.0', '::') AND lp.port IN (22, 23, 445, 3389, 5985, 5986, 8080, 8443, 10000);
   platform: linux
   interval: 86400
   observer_can_run: false
