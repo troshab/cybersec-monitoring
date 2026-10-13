@@ -1,0 +1,210 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Стан базової лінії CIS IG1: резервні копії (BK-01, BK-02), алерти posture. Drift-перевірки пристроїв (osquery) - у Fleet, пакет posture/osquery/ig1-posture.yml.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Час від останнього успішного запуску backup.ps1 / backup.sh (метрика backup_last_success_timestamp_seconds). Поріг алерту BackupTooOld - 48 годин.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 24 },
+              { "color": "red", "value": 48 }
+            ]
+          },
+          "unit": "h"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "footer": { "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Age" }]
+      },
+      "pluginVersion": "13.2.3",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "(time() - max by (job, host) (backup_last_success_timestamp_seconds)) / 3600",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{ host }} / {{ job }}",
+          "refId": "A"
+        }
+      ],
+      "title": "BK-02 / CIS IG1 11.2 - Вік останньої успішної копії по хостах",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Час від останньої успішної перевірки відновлення (метрика backup_last_restore_test_timestamp_seconds). Поріг алерту RestoreTestOverdue - 90 днів.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 60 },
+              { "color": "red", "value": 90 }
+            ]
+          },
+          "unit": "d"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "options": {
+        "footer": { "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Age" }]
+      },
+      "pluginVersion": "13.2.3",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "(time() - max by (job, host) (backup_last_restore_test_timestamp_seconds)) / 86400",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{ host }} / {{ job }}",
+          "refId": "A"
+        }
+      ],
+      "title": "BK-01 / CIS IG1 11.1 - Вік останньої перевірки відновлення по хостах",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Кількість піднятих алертів, що відповідають картках BK-01 і BK-02 (posture-alerts.yml).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "pluginVersion": "13.2.3",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "count(ALERTS{alertstate=\"firing\", alertname=~\"BackupTooOld|RestoreTestOverdue\"}) OR vector(0)",
+          "refId": "A"
+        }
+      ],
+      "title": "BK-02 / CIS IG1 11.2 - Піднятих алертів резервних копій",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Стан алертів, що відповідають картках posture: BackupTooOld, RestoreTestOverdue (BK-01, BK-02), WindowsFirewallDisabled (CF-05, CIS IG1 4.5), WindowsDefenderDisabled (MW-01, CIS IG1 10.1). Будь-які рядки - потрібна реакція.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 8 },
+      "id": 4,
+      "options": {
+        "footer": { "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true
+      },
+      "pluginVersion": "13.2.3",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "ALERTS{alertname=~\"BackupTooOld|RestoreTestOverdue|WindowsFirewallDisabled|WindowsDefenderDisabled\", alertstate=\"firing\"}",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "BK-02 / CIS IG1 11.2 - Стан алертів posture (backup, firewall, Defender)",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "id": 5,
+      "options": {
+        "content": "# Drift-перевірки пристроїв: Fleet (osquery)\n\nПакет `posture/osquery/ig1-posture.yml` застосовується командою `fleetctl apply -f posture/osquery/ig1-posture.yml`. Результати дивіться у Fleet: Queries, потім назва запиту.\n\n| Картка | CIS IG1 | Запит у Fleet |\n|---|---|---|\n| AS-01 | 1.1 | `ig1_AS-01` |\n| AS-03 | 2.1 | `ig1_AS-03_windows`, `ig1_AS-03_linux` |\n| AS-04 | 2.2 | `ig1_AS-04` |\n| AS-05 | 2.3 | `ig1_AS-05_windows`, `ig1_AS-05_linux` |\n| AC-01 | 5.1 | `ig1_AC-01` |\n| AC-03 | 5.3 | `ig1_AC-03_windows`, `ig1_AC-03_linux` |\n| AC-04 | 5.4 | `ig1_AC-04_windows`, `ig1_AC-04_linux` |\n| DA-03 | 3.3 | `ig1_DA-03_windows`, `ig1_DA-03_linux` |\n| DA-06 | 3.6 | `ig1_DA-06_windows`, `ig1_DA-06_linux` |\n| CF-02 | 4.2 | `ig1_CF-02_linux` |\n| CF-03 | 4.3 | `ig1_CF-03_windows` |\n| CF-04 | 4.4 | `ig1_CF-04_linux` |\n| CF-05 | 4.5 | `ig1_CF-05_windows` |\n| CF-07 | 4.7 | `ig1_CF-07_windows`, `ig1_CF-07_linux` |\n| EW-01 | 9.1 | `ig1_EW-01_windows`, `ig1_EW-01_linux` |\n| EW-02 | 9.2 | `ig1_EW-02_windows` |\n| MW-01 | 10.1 | `ig1_MW-01_windows`, `ig1_MW-01_linux` |\n| MW-02 | 10.2 | `ig1_MW-02_windows`, `ig1_MW-02_linux` |\n| MW-03 | 10.3 | `ig1_MW-03_windows` |\n| VM-03 | 7.3 | `ig1_VM-03_windows`, `ig1_VM-03_linux` |\n| VM-04 | 7.4 | `ig1_VM-04_windows` |\n| LOG-02 | 8.2 | `ig1_LOG-02_windows`, `ig1_LOG-02_linux` |\n| BK-02 | 11.2 | `ig1_BK-02_windows`, `ig1_BK-02_linux` |\n",
+        "mode": "markdown"
+      },
+      "pluginVersion": "13.2.3",
+      "title": "AS-01 / CIS IG1 1.1 - Пакет Fleet osquery IG1 (drift-перевірки пристроїв)",
+      "type": "text"
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["posture", "ig1", "baseline"],
+  "templating": { "list": [] },
+  "time": { "from": "now-7d", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "IG1 Posture",
+  "uid": "ig1-posture",
+  "version": 1,
+  "weekStart": ""
+}
