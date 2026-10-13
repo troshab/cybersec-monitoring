@@ -86,7 +86,7 @@ Write-Log "Downloading Grafana Alloy..." -Level Info
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
 # Latest stable version
-$alloyVersion = "1.5.1"
+$alloyVersion = "1.20.1"
 $arch = if ([Environment]::Is64BitOperatingSystem) { "amd64" } else { "386" }
 $downloadUrl = "https://github.com/grafana/alloy/releases/download/v${alloyVersion}/alloy-installer-windows-${arch}.exe.zip"
 $zipPath = "$tempDir\alloy-installer.zip"

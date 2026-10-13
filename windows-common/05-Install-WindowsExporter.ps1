@@ -29,9 +29,9 @@
 
 [CmdletBinding()]
 param(
-    [string]$ExporterVersion = "0.25.1",
+    [string]$ExporterVersion = "0.31.9",
     [int]$ListenPort = 9182,
-    [string]$Collectors = "cpu,cs,logical_disk,memory,net,os,process,service,system,tcp"
+    [string]$Collectors = "cpu,logical_disk,memory,net,os,process,service,system,tcp"
 )
 
 $ErrorActionPreference = "Stop"

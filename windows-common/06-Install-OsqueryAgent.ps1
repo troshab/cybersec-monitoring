@@ -37,7 +37,7 @@ param(
 
     [string]$CertPath,
 
-    [string]$OsqueryVersion = "5.12.1",
+    [string]$OsqueryVersion = "5.23.1",
 
     # Використовувати для self-signed сертифікатів (lab/training environment)
     [switch]$Insecure

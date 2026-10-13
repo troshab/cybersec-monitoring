@@ -4,7 +4,7 @@
 param(
     [string]$FleetUrl = "10.0.1.2:8080",
     [string]$EnrollSecret = "",
-    [string]$OsqueryVersion = "5.12.1"
+    [string]$OsqueryVersion = "5.23.1"
 )
 
 $ErrorActionPreference = "Stop"

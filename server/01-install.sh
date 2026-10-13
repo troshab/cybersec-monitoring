@@ -571,7 +571,7 @@ EOF
 install_node_exporter() {
     log_info "Встановлення Node Exporter..."
 
-    local NODE_EXPORTER_VERSION="1.7.0"
+    local NODE_EXPORTER_VERSION="1.12.1"
     cd /tmp
     wget -q "https://github.com/prometheus/node_exporter/releases/download/v${NODE_EXPORTER_VERSION}/node_exporter-${NODE_EXPORTER_VERSION}.linux-amd64.tar.gz"
     tar xzf "node_exporter-${NODE_EXPORTER_VERSION}.linux-amd64.tar.gz"
