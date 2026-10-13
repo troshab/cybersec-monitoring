@@ -278,8 +278,8 @@ kind: query
 spec:
   # CF-03 | CIS IG1 4.3 | Drift: screen lock policy missing or timeout > 900 s (15 min).
   name: ig1_cf_03_windows
-  description: "CF-03 (CIS IG1 4.3): політика блокування екрана. Drift: ScreenSaverIsSecure не 1 або ScreenSaveTimeOut більший за 900."
-  query: SELECT key, name, data FROM registry WHERE key = 'HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Control Panel\Desktop' AND name IN ('ScreenSaveActive', 'ScreenSaverIsSecure', 'ScreenSaveTimeOut');
+  description: "CF-03 (CIS IG1 4.3): автоблокування. Machine inactivity limit (HKLM InactivityTimeoutSecs) плюс політика заставки користувачів (HKU). Drift: InactivityTimeoutSecs відсутній, 0 або більший за 900, і жоден користувач не має ScreenSaverIsSecure=1 з ScreenSaveTimeOut <= 900."
+  query: SELECT 'machine' AS scope, path, name, data FROM registry WHERE key = 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' AND name = 'InactivityTimeoutSecs' UNION ALL SELECT 'user' AS scope, path, name, data FROM registry WHERE path LIKE 'HKEY_USERS\%\Software\Policies\Microsoft\Windows\Control Panel\Desktop\%' AND name IN ('ScreenSaveActive', 'ScreenSaverIsSecure', 'ScreenSaveTimeOut');
   platform: windows
   interval: 86400
   observer_can_run: false
