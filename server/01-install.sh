@@ -271,7 +271,9 @@ setup_hardening() {
     # Docker-published ports bypass ufw, so the bind address is the real control.
 
     # Syslog UDP
-    ufw allow 514/udp comment "Syslog"
+    for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16; do
+        ufw allow from "$net" to any port 514 proto udp comment "Syslog (LAN only)"
+    done
 
     # FleetDM (якщо не пропущено)
     if [[ "$SKIP_INVENTORY" != true ]]; then

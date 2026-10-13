@@ -338,7 +338,7 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="windows_directory_service"} |= "5136" [5m])'
+              expr: 'count_over_time({job="windows_adds"} |= "5136" [5m])'
               queryType: range
               refId: A
           - refId: B
@@ -388,7 +388,7 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="windows_directory_service"} |= "5137" [5m])'
+              expr: 'count_over_time({job="windows_adds"} |= "5137" [5m])'
               queryType: range
               refId: A
           - refId: B
@@ -436,7 +436,7 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="windows_directory_service"} |= "5141" [5m])'
+              expr: 'count_over_time({job="windows_adds"} |= "5141" [5m])'
               queryType: range
               refId: A
           - refId: B

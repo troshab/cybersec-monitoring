@@ -2,7 +2,7 @@
 
 Повний набір скриптів та конфігурацій для автоматичного розгортання системи моніторингу кібербезпеки на базі Grafana Stack (Prometheus 3.x, Loki 3.x, Grafana 12, Alertmanager) та інструментів інвентаризації (Netdisco, FleetDM).
 
-**Stack 2025**: Prometheus 3.0.1, Loki 3.3.2, Grafana 12.3.0, Grafana Alloy 1.x
+**Стек**: Prometheus, Loki, Grafana, Grafana Alloy, Alertmanager, SNMP Exporter; точні версії - у таблиці "Версії компонентів" нижче
 
 ## Філософія
 
@@ -220,8 +220,9 @@ cybersec-monitoring/
 │
 └── testing/                  # Тести для перевірки моніторингу
     └── detection-testing/    # Об'єднані скрипти по категоріях
-        ├── windows/          # 6 PowerShell тестів
-        └── kali/             # 7 Bash тестів
+        ├── windows/          # 8 PowerShell тестів + Run-AllTests.ps1
+        ├── linux/            # 4 Bash тести + run-all-tests.sh
+        └── kali/             # 6 Bash сценаріїв + run-all-tests.sh (лише лабораторія)
 ```
 
 ## Posture-шар (CIS IG1)
@@ -235,7 +236,12 @@ Posture-шар перевіряє базову лінію CIS Controls v8.1 IG1 
 - **Append-only резервні копії (BK-03).** Якщо сховище - rest-server з прапорцем `--append-only` (перевірено за README rest-server, гілка master, 2026-10-13), задайте `RESTIC_APPEND_ONLY=1` для `backup.sh` або параметр `-AppendOnly` для `backup.ps1`. Скрипт тоді виконує backup і check та записує метрику, але не запускає forget/prune, тож клієнт не може видалити старі знімки. За замовчуванням forget/prune виконується, як і раніше. Очищення робіть окремо на сервері з іншими обліковими даними: наприклад, другим інстансом rest-server без `--append-only` на іншому порту, доступним лише з сервера:
 
 ```sh
-restic -r rest:https://admin:PASS@backup.example.org:8001/host1 forget --tag restic --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
+# На сервері зберігання, з окремими обліковими даними (не тими, що на клієнтах).
+# Спершу без --prune і з --dry-run: forget видаляє знімки безповоротно.
+export RESTIC_REPOSITORY=rest:https://backup.example.org:8001/host1
+export RESTIC_PASSWORD_FILE=/root/.restic-admin-pass
+restic forget --tag restic --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --dry-run
+restic forget --tag restic --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
 ```
 
 
@@ -276,42 +282,41 @@ restic -r rest:https://admin:PASS@backup.example.org:8001/host1 forget --tag res
 ### Windows тести (PowerShell)
 
 ```powershell
-# Перейти в папку тестів
 cd testing\detection-testing\windows
+.\Run-AllTests.ps1            # усі тести по черзі
 
-# Запуск тестів аутентифікації
-.\01-Test-Authentication.ps1
-
-# Доступні тести:
-# 01-Test-Authentication.ps1  - Failed logins, privilege escalation
-# 02-Test-UserManagement.ps1  - User/group creation, admin access
-# 03-Test-Persistence.ps1     - Services, scheduled tasks
-# 04-Test-DefenseEvasion.ps1  - Log clearing, policy changes
-# 05-Test-ProcessExecution.ps1 - Suspicious process creation
-# 06-Test-LateralMovement.ps1 - SMB, RDP, WinRM connections
+# 01-test-authentication.ps1      - невдалі входи, підвищення привілеїв
+# 02-test-account-management.ps1  - створення користувачів і груп
+# 03-test-process-execution.ps1   - підозрілі процеси
+# 04-test-powershell.ps1          - журналювання PowerShell
+# 05-test-service-creation.ps1    - нові служби
+# 06-test-scheduled-tasks.ps1     - заплановані завдання
+# 07-test-log-clearing.ps1        - очищення журналів
+# 08-test-active-directory.ps1    - зміни в AD (події 5136/5137/5141, job windows_adds)
 ```
 
-### Kali тести (Bash)
+### Linux тести (Bash)
+
+```bash
+cd testing/detection-testing/linux
+./run-all-tests.sh
+# 01-test-authentication.sh, 02-test-user-management.sh, 03-test-sudo-activity.sh, 04-test-persistence.sh
+```
+
+### Kali сценарії (Bash, лише ізольована лабораторія)
 
 ```bash
 cd testing/detection-testing/kali
-
-# Запуск тестів сканування
-./01-test-scanning.sh
-
-# Доступні тести:
-# 01-test-scanning.sh      - Port/network scanning
-# 02-test-bruteforce.sh    - Password attacks
-# 03-test-webattacks.sh    - SQL injection, XSS
-# 04-test-exploitation.sh  - Metasploit framework
-# 05-test-postexploit.sh   - Post-exploitation
-# 06-test-exfiltration.sh  - Data exfiltration
-# 07-test-persistence.sh   - Backdoors, C2
+./run-all-tests.sh
+# 01-network-discovery.sh, 02-port-scanning.sh, 03-smb-enumeration.sh,
+# 04-credential-attacks.sh, 05-lateral-movement.sh, 06-persistence-simulation.sh
 ```
+
+Запускайте сценарії атак лише у власній лабораторній мережі з письмовим дозволом власника інфраструктури.
 
 ## Безпека
 
-- **Скомпрометовано: ключ Fleet і паролі лабораторії.** Раніше в git були закомічені ключ Fleet і паролі лабораторного середовища (`Mon!123admin`, `kali/kali`). Розглядайте їх як скомпрометовані: ротуйте ключ Fleet, JWT-ключі й усі паролі перед будь-яким використанням поза лабораторією. Історія git зберігає їх; для повного усунення потрібно переписати історію або створити новий репозиторій.
+- **Скомпрометовано: ключ Fleet і паролі лабораторії.** Раніше в git були закомічені ключ Fleet і паролі лабораторного середовища (колишній спільний пароль лабораторії та стандартний пароль Kali). Вважайте їх скомпрометованими і змініть на всіх машинах; з історії git вони не зникли. Розглядайте їх як скомпрометовані: ротуйте ключ Fleet, JWT-ключі й усі паролі перед будь-яким використанням поза лабораторією. Історія git зберігає їх; для повного усунення потрібно переписати історію або створити новий репозиторій.
 - **Секрети.** `.env` не відстежується, шаблон - `.env.example`; значення генеруються `server/gen-env.sh`. Порти моніторингу прив'язані до loopback. `--web.enable-admin-api` вимкнено.
 - **Retention Loki 6 місяців.** Це рекомендація, не вимога CERT-UA.
 - **Резервні копії.** Пароль restic тримайте поза репозиторієм (див. розділ Posture-шар).
@@ -320,10 +325,10 @@ cd testing/detection-testing/kali
 
 | Host | IP | OS | Credentials |
 |------|----|----|-------------|
-| Monitoring Server | 10.0.1.2 | Debian 13 | monadmin / Mon!123admin |
-| Domain Controller | 10.0.1.3 | Windows Server 2025 | LAB\monadmin / Mon!123admin |
-| Windows Client | 10.0.1.4 | Windows 11 | LAB\pc / Mon!123admin |
-| Kali Linux | 10.0.1.5 | Kali 2024.x | kali / kali |
+| Monitoring Server | 10.0.1.2 | Debian 13 | власний обліковий запис, пароль з менеджера паролів |
+| Domain Controller | 10.0.1.3 | Windows Server 2025 | LAB\<admin>, пароль з менеджера паролів |
+| Windows Client | 10.0.1.4 | Windows 11 | LAB\<user>, пароль з менеджера паролів |
+| Kali Linux | 10.0.1.5 | Kali (поточний випуск) | змініть пароль за замовчуванням після встановлення |
 
 **Domain:** LAB (lab.local)
 

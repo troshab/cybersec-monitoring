@@ -208,7 +208,7 @@ services:
         condition: service_healthy
     command: sh -c "/usr/bin/fleet prepare db --no-prompt && /usr/bin/fleet serve"
     ports:
-      - "${FLEET_PORT:-8080}:8080"
+      - "${FLEET_BIND_IP:-0.0.0.0}:${FLEET_PORT:-8080}:8080"
     volumes:
       - ./fleetdm/certs:/certs:ro
       - ./fleetdm/logs:/logs

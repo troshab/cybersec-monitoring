@@ -308,8 +308,8 @@ foreach ($event in $events) {
 
 Write-Host ""
 Write-Host "Loki запити для перевірки:" -ForegroundColor Yellow
-Write-Host '  {job="windows_directory_service"} |~ "5136|5137|5141"'
-Write-Host '  {job="windows_directory_service"} |= "Domain Admins"'
+Write-Host '  {job="windows_adds"} |~ "5136|5137|5141"'
+Write-Host '  {job="windows_adds"} |= "Domain Admins"'
 Write-Host '  {job="windows_accounts"} |= "TestADUser"'
 Write-Host ""
 
