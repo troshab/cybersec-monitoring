@@ -1,0 +1,51 @@
+# =============================================================================
+# Posture Alerts - Prometheus drift rules for CIS IG1 baseline cards
+# =============================================================================
+# Source metrics are written by the restic scripts in posture/backup/:
+#   backup_last_success_timestamp_seconds{job,host}        (BK-02, CIS IG1 11.2)
+#   backup_last_restore_test_timestamp_seconds{job,host}   (BK-01, CIS IG1 11.1)
+# Firewall, antivirus and update state are checked by osquery (Fleet pack
+# posture/osquery/ig1-posture.yml) and by WindowsFirewallDisabled /
+# WindowsDefenderDisabled in windows-alerts.yml (windows_service_state).
+# windows_exporter v0.31.9 exposes no Defender signature-age or firewall
+# collector, so no signature-age alert is defined here.
+# =============================================================================
+
+groups:
+  # ===========================================================================
+  # Backup posture
+  # ===========================================================================
+  - name: posture_backup
+    interval: 5m
+    rules:
+      # -----------------------------------------------------------------------
+      # Last successful backup older than 48 hours
+      # -----------------------------------------------------------------------
+      - alert: BackupTooOld
+        expr: |
+          time() - max by (job, host) (backup_last_success_timestamp_seconds) > 48 * 3600
+        for: 15m
+        labels:
+          severity: critical
+          category: backup
+          card: BK-02
+          cis_ig1: "11.2"
+        annotations:
+          summary: "Остання успішна резервна копія старша за 48 годин: {{ $labels.host }} ({{ $labels.job }})"
+          description: "Картка BK-02 (CIS IG1 11.2): відстань від останнього успішного запуску backup.ps1 або backup.sh перевищує 48 годин. Перевірте розклад задачі та журнал restic."
+
+      # -----------------------------------------------------------------------
+      # Restore test older than 90 days
+      # -----------------------------------------------------------------------
+      - alert: RestoreTestOverdue
+        expr: |
+          time() - max by (job, host) (backup_last_restore_test_timestamp_seconds) > 90 * 86400
+        for: 1h
+        labels:
+          severity: warning
+          category: backup
+          card: BK-01
+          cis_ig1: "11.1"
+        annotations:
+          summary: "Відновлення з копії не перевірялося понад 90 днів: {{ $labels.host }} ({{ $labels.job }})"
+          description: "Картка BK-01 (CIS IG1 11.1): restore-test.ps1 або restore-test.sh не завершувався успішно протягом 90 днів. Запустіть перевірку відновлення вручну й перевірте канарковий хеш."
