@@ -2,7 +2,7 @@
 # Inventory Stack - Docker Compose
 # =============================================================================
 # Netdisco (мережева інвентаризація) + FleetDM (endpoints інвентаризація)
-# Stack 2025: MySQL 8.4 LTS, Redis 7.4, FleetDM 4.61
+# Stack 2025: MySQL 8.4 LTS, Redis 7.4, FleetDM 4.93.0
 # Based on: https://github.com/netdisco/netdisco-docker
 # =============================================================================
 
@@ -164,14 +164,14 @@ services:
       --gtid-mode=ON
       --enforce-gtid-consistency=ON
     environment:
-      MYSQL_ROOT_PASSWORD: ${FLEET_MYSQL_ROOT_PASSWORD:-fleet_root_password}
+      MYSQL_ROOT_PASSWORD: ${FLEET_MYSQL_ROOT_PASSWORD:?set FLEET_MYSQL_ROOT_PASSWORD in .env (server/gen-env.sh)}
       MYSQL_DATABASE: fleet
       MYSQL_USER: fleet
-      MYSQL_PASSWORD: ${FLEET_MYSQL_PASSWORD:-fleet_user_password}
+      MYSQL_PASSWORD: ${FLEET_MYSQL_PASSWORD:?set FLEET_MYSQL_PASSWORD in .env (server/gen-env.sh)}
     volumes:
       - fleet-mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${FLEET_MYSQL_ROOT_PASSWORD:-fleet_root_password}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${FLEET_MYSQL_ROOT_PASSWORD:?set FLEET_MYSQL_ROOT_PASSWORD in .env}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -215,7 +215,7 @@ services:
       FLEET_MYSQL_ADDRESS: fleet-mysql:3306
       FLEET_MYSQL_DATABASE: fleet
       FLEET_MYSQL_USERNAME: fleet
-      FLEET_MYSQL_PASSWORD: ${FLEET_MYSQL_PASSWORD:-fleet_user_password}
+      FLEET_MYSQL_PASSWORD: ${FLEET_MYSQL_PASSWORD:?set FLEET_MYSQL_PASSWORD in .env (server/gen-env.sh)}
       FLEET_REDIS_ADDRESS: fleet-redis:6379
       FLEET_SERVER_ADDRESS: 0.0.0.0:8080
       FLEET_SERVER_CERT: /certs/fleet.crt
