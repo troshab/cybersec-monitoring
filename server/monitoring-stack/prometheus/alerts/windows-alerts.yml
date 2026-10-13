@@ -118,6 +118,8 @@ groups:
           severity: critical
           category: security
           os: windows
+          card: MW-01
+          cis_ig1: "10.1"
         annotations:
           summary: "Windows Defender вимкнено на {{ $labels.instance }}"
           description: "Антивірус не працює! Можлива атака або malware."
@@ -133,6 +135,8 @@ groups:
           severity: critical
           category: security
           os: windows
+          card: CF-05
+          cis_ig1: "4.5"
         annotations:
           summary: "Windows Firewall вимкнено на {{ $labels.instance }}"
           description: "Firewall не працює! Система вразлива."

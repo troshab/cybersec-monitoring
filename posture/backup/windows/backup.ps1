@@ -10,13 +10,15 @@
 # C:\ProgramData\backup\restic.env that is ACL-restricted to SYSTEM/Administrators):
 #   RESTIC_REPOSITORY       repository URL or path
 #   RESTIC_PASSWORD_FILE    path to a file holding the repo password
+#   RESTIC_APPEND_ONLY      1 = append-only repository on the server (same as -AppendOnly)
 #
 # Usage:
 #   .\backup.ps1 -Paths 'C:\Data','C:\Shares' -DryRun
 #   .\backup.ps1 -Paths 'C:\Data'
 #
-# The success timestamp is written only after backup, forget/prune and a
-# partial data check (restic check --read-data-subset=5%) have all succeeded.
+# The success timestamp is written only after backup, forget/prune (skipped with
+# -AppendOnly or RESTIC_APPEND_ONLY=1) and a partial data check
+# (restic check --read-data-subset=5%) have all succeeded.
 # =============================================================================
 
 #Requires -Version 5.1
@@ -29,8 +31,12 @@ param(
 
     [string]$TextfileDir = 'C:\Program Files\windows_exporter\textfile_inputs',
 
-    [string]$Job = 'restic'
+    [string]$Job = 'restic',
+
+    [switch]$AppendOnly
 )
+
+$appendOnly = $AppendOnly -or ($env:RESTIC_APPEND_ONLY -eq '1')
 
 $ErrorActionPreference = 'Stop'
 
@@ -82,8 +88,12 @@ if ($DryRun) {
     exit 0
 }
 
-Invoke-Restic -Arguments @('forget', '--tag', $Job, '--host', $hostName,
-    '--keep-daily', '7', '--keep-weekly', '4', '--keep-monthly', '6', '--prune')
+if ($appendOnly) {
+    Write-Host 'AppendOnly: forget/prune skipped; prune runs on the server with separate credentials.'
+} else {
+    Invoke-Restic -Arguments @('forget', '--tag', $Job, '--host', $hostName,
+        '--keep-daily', '7', '--keep-weekly', '4', '--keep-monthly', '6', '--prune')
+}
 Invoke-Restic -Arguments @('check', '--read-data-subset=5%')
 
 $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()

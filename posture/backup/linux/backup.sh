@@ -10,12 +10,15 @@
 # Environment (keep outside the repo, e.g. /etc/restic/restic.env, mode 0600):
 #   RESTIC_REPOSITORY      repository URL or path
 #   RESTIC_PASSWORD_FILE   file holding the repo password (mode 0600, root-owned)
+#   RESTIC_APPEND_ONLY     1 = repository is append-only on the server (see README):
+#                          forget/prune is skipped here; default 0
 #
 # Usage:
 #   backup.sh [--dry-run] PATH [PATH...]
 #
-# The success metric is written only after backup, forget/prune and a partial
-# data check (restic check --read-data-subset=5%) have all succeeded.
+# The success metric is written only after backup, forget/prune (skipped when
+# RESTIC_APPEND_ONLY=1) and a partial data check (restic check --read-data-subset=5%)
+# have all succeeded.
 # =============================================================================
 set -euo pipefail
 
@@ -74,8 +77,12 @@ if [[ $DRY_RUN -eq 1 ]]; then
     exit 0
 fi
 
-restic forget --tag "$JOB" --host "$HOST_NAME" \
-    --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
+if [[ "${RESTIC_APPEND_ONLY:-0}" == "1" ]]; then
+    echo "RESTIC_APPEND_ONLY=1: forget/prune skipped; prune runs on the server with separate credentials."
+else
+    restic forget --tag "$JOB" --host "$HOST_NAME" \
+        --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
+fi
 restic check --read-data-subset=5%
 
 now="$(date +%s)"

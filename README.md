@@ -227,10 +227,16 @@ cybersec-monitoring/
 
 Posture-шар перевіряє базову лінію CIS Controls v8.1 IG1 (56 завдань). Картки і маппінг на CIS IG1 - у `posture/osquery/ig1-posture.yml` (заголовки містять ID картки і CIS ID).
 
-- **Drift-перевірки пристроїв (Fleet/osquery).** Пакет застосовується командою `fleetctl apply -f posture/osquery/ig1-posture.yml`. Запити названо `ig1_<ID картки>_<платформа>`, наприклад `ig1_BK-02_windows`. Запити, які не покриті цим пакетом (NET-01, LOG-01, LOG-03, BK-01, BK-03, BK-04, AS-02, DA-04), перелічено в коментарі на початку файлу з причиною.
+- **Drift-перевірки пристроїв (Fleet/osquery).** Пакет застосовується командою `fleetctl apply -f posture/osquery/ig1-posture.yml`. Запити названо `ig1_<id картки у нижньому регістрі>[_<платформа>]`, наприклад `ig1_bk_02_windows`; повний список за картками - у коментарі на початку файлу. Запити, які не покриті цим пакетом (NET-01, LOG-01, LOG-03, BK-01, BK-03, BK-04, AS-02, DA-04), перелічено там само з причиною.
 - **Алерти (Prometheus).** `server/monitoring-stack/prometheus/alerts/posture-alerts.yml` підхоплюється через `rule_files` (`/etc/prometheus/alerts/*.yml`). Правила `BackupTooOld` (BK-02, CIS 11.2, більше 48 годин) і `RestoreTestOverdue` (BK-01, CIS 11.1, більше 90 днів).
 - **Дашборд Grafana.** `IG1 Posture` (`grafana/dashboards/08-ig1-posture.json`) завантажується через provisioning.
 - **Резервні копії (restic).** Встановіть restic 0.19.1. Задайте `RESTIC_REPOSITORY` і `RESTIC_PASSWORD_FILE` з файлом пароля поза репозиторієм: Linux - `0600`, власник root; Windows - файл з обмеженим ACL. Скрипти `posture/backup/linux/backup.sh` і `posture/backup/windows/backup.ps1` записують метрику `backup_last_success_timestamp_seconds`; `restore-test.sh` і `restore-test.ps1` записують `backup_last_restore_test_timestamp_seconds`. Textfile для Windows: `C:\Program Files\windows_exporter\textfile_inputs` (параметр `-TextfileDir`), для Linux: `/var/lib/node_exporter/textfile`. Запускайте backup і restore-test за розкладом.
+- **Append-only резервні копії (BK-03).** Якщо сховище - rest-server з прапорцем `--append-only` (перевірено за README rest-server, гілка master, 2026-10-13), задайте `RESTIC_APPEND_ONLY=1` для `backup.sh` або параметр `-AppendOnly` для `backup.ps1`. Скрипт тоді виконує backup і check та записує метрику, але не запускає forget/prune, тож клієнт не може видалити старі знімки. За замовчуванням forget/prune виконується, як і раніше. Очищення робіть окремо на сервері з іншими обліковими даними: наприклад, другим інстансом rest-server без `--append-only` на іншому порту, доступним лише з сервера:
+
+```sh
+restic -r rest:https://admin:PASS@backup.example.org:8001/host1 forget --tag restic --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
+```
+
 
 ## Дашборди
 
