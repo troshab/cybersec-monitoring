@@ -49,16 +49,16 @@ Scripts for testing detection capabilities from an attacker's perspective.
 chmod +x *.sh
 
 # Run single test against Windows Server 2025
-./01-network-discovery.sh -t 10.0.1.3
+./01-network-discovery.sh -t 192.0.2.11
 
 # Run all tests against Windows Server
-./run-all-tests.sh -t 10.0.1.3
+./run-all-tests.sh -t 192.0.2.11
 
 # Run against Windows 11 client
-./run-all-tests.sh -t 10.0.1.4 -d 30
+./run-all-tests.sh -t 192.0.2.14 -d 30
 
 # Run with credentials for lateral movement tests
-./run-all-tests.sh -t 10.0.1.3 -u monadmin -p "$TARGET_SERVER_PASSWORD"
+./run-all-tests.sh -t 192.0.2.11 -u admin -p "$TARGET_SERVER_PASSWORD"
 ```
 
 ## Safety Notes
@@ -76,8 +76,8 @@ After running tests, verify detection in Grafana:
 # Failed authentication attempts
 {job="windows_auth"} |= "4625"
 
-# Network connections from Kali IP (10.0.1.5)
-{job="windows_sysmon"} |~ "10.0.1.5"
+# Network connections from Kali IP (192.0.2.15)
+{job="windows_sysmon"} |~ "192.0.2.15"
 
 # New services created
 {job="windows_services"} |= "7045"

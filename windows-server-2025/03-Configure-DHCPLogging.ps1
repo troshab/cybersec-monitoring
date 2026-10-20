@@ -188,6 +188,6 @@ Write-Host ""
 Write-Host "Формат DHCP Audit Log:" -ForegroundColor Yellow
 Write-Host "  ID,Date,Time,Description,IP Address,Host Name,MAC Address"
 Write-Host ""
-Write-Host "Promtail файл для DHCP логів:" -ForegroundColor Yellow
-Write-Host '  Додайте job для парсингу C:\Windows\System32\dhcp\DhcpSrvLog-*.log'
+Write-Host "Конфігурація Grafana Alloy для DHCP логів:" -ForegroundColor Yellow
+Write-Host '  Додайте блок loki.source.file для C:\Windows\System32\dhcp\DhcpSrvLog-*.log'
 Write-Host ""

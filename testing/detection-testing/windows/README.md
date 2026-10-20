@@ -8,7 +8,7 @@
 
 Скрипти симулюють різні типи атак та підозрілу активність для перевірки:
 - Налаштування аудиту
-- Збору логів (Promtail)
+- Збору логів (Grafana Alloy)
 - Правил алертів
 - Дашбордів Grafana
 
@@ -16,16 +16,14 @@
 
 ```
 windows/
-├── 01-test-authentication.ps1     # Тести автентифікації (4624, 4625)
-├── 02-test-account-management.ps1 # Управління акаунтами (4720, 4732)
+├── 01-test-authentication.ps1     # Тести автентифікації (4624, 4625, 4672, 4776)
+├── 02-test-account-management.ps1 # Управління акаунтами (4720-4738)
 ├── 03-test-process-execution.ps1  # Запуск процесів (4688, Sysmon 1)
 ├── 04-test-powershell.ps1         # PowerShell events (4103, 4104)
 ├── 05-test-service-creation.ps1   # Створення сервісів (7045, 4697)
 ├── 06-test-scheduled-tasks.ps1    # Scheduled Tasks (4698-4702)
-├── 07-test-network-connections.ps1 # Мережеві підключення (Sysmon 3, 22)
-├── 08-test-file-operations.ps1    # Файлові операції (4663, 5140)
-├── 09-test-registry-changes.ps1   # Зміни реєстру (Sysmon 12, 13)
-├── 10-test-defender-detection.ps1 # Windows Defender alerts
+├── 07-test-log-clearing.ps1       # Очищення журналів (1102, 1100)
+├── 08-test-active-directory.ps1   # Active Directory (5136-5141)
 ├── Run-AllTests.ps1               # Запуск всіх тестів
 └── README.md
 ```
@@ -72,28 +70,26 @@ windows/
 
 | Event ID | Опис | Тест |
 |----------|------|------|
-| 4624 | Successful logon | 01 |
-| 4625 | Failed logon | 01 |
-| 4720 | User account created | 02 |
-| 4732 | Member added to group | 02 |
-| 4688 | Process creation | 03 |
-| 4104 | PowerShell script block | 04 |
-| 7045 | Service installed | 05 |
-| 4698 | Scheduled task created | 06 |
-| Sysmon 3 | Network connection | 07 |
-| Sysmon 22 | DNS query | 07 |
-| 4663 | Object access | 08 |
-| Sysmon 12/13 | Registry changes | 09 |
-| 1116/1117 | Defender detection | 10 |
+| 4624, 4625 | Успішний і невдалий вхід | 01 |
+| 4672, 4776 | Привілейовані входи, перевірка облікових даних | 01 |
+| 4720, 4732 | Створення акаунта, додавання до групи | 02 |
+| 4688, Sysmon 1 | Створення процесу | 03 |
+| 4103, 4104 | PowerShell | 04 |
+| 7045, 4697 | Встановлення сервісу | 05 |
+| 4698-4702 | Заплановані завдання | 06 |
+| 1102, 1100 | Очищення журналу | 07 |
+| 5136-5141 | Об'єкти Active Directory | 08 |
 
 ## Очікувані алерти
 
-Після виконання тестів мають спрацювати алерти:
-- `MultipleFailedLogins` - багато невдалих спроб входу
-- `NewServiceInstalled` - створення нового сервісу
-- `SuspiciousPowerShell` - підозрілі PowerShell команди
-- `AccountCreated` - створення нового акаунту
-- `ScheduledTaskCreated` - створення задачі
+Події, які генерують тести, потрапляють під такі правила Grafana Alerting (`server/monitoring-stack/grafana/provisioning/alerting/alert-rules.yml`):
+- `CRITICAL: Audit Log Cleared (1102)` - тест 07
+- `CRITICAL: New Admin Added (4732)` - тест 02
+- `HIGH: New Service Installed (7045)` - тест 05
+- `HIGH: Scheduled Task Created (4698)` - тест 06
+- `CRITICAL: Suspicious PowerShell Detected` - тест 04
+- `HIGH: Failed Login Spike (4625)` - тест 01
+- `HIGH: AD Object Modified (5136)` - тест 08
 
 ## Безпека
 

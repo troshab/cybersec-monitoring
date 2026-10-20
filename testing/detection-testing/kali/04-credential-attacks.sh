@@ -184,6 +184,7 @@ echo ""
 echo -e "${GREEN}[TEST 4] Password Spraying (Single Password)${NC}"
 log "[TEST 4] Password Spraying"
 
+# Deliberately weak test password for the lab attack simulation. It is not a credential; never reuse it outside the lab.
 SPRAY_PASSWORD="Spring2024!"
 
 if command -v crackmapexec &> /dev/null; then

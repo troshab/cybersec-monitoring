@@ -253,5 +253,5 @@ Write-Host ""
 Write-Host "УВАГА:" -ForegroundColor Yellow
 Write-Host "  - File audit генерує ДУЖЕ багато подій"
 Write-Host "  - Рекомендується аудит тільки критичних операцій"
-Write-Host "  - Налаштуйте фільтри в Promtail"
+Write-Host "  - Налаштуйте фільтри в config.alloy"
 Write-Host ""

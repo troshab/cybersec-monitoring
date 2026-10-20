@@ -36,7 +36,7 @@ no_auth: true
 # define snmp communities here
 device_auth:
   - tag: 'default_v2_readonly'
-    # Set the same value as SNMP_COMMUNITY in .env. Never leave the vendor default 'public'.
-    community: 'CHANGE_ME'
+    # Substituted from SNMP_COMMUNITY in .env by server/01-install.sh (envsubst on the /opt copy). Never leave the vendor default 'public'.
+    community: '${SNMP_COMMUNITY}'
     read: true
     write: false

@@ -24,8 +24,9 @@
     Documentation: https://ericzimmerman.github.io/KapeDocs/
 
     For CERT-UA incidents:
-    - Email: cert@cert.gov.ua
-    - Phone: +380 44 281 88 25
+    - Email: incidents@cert.gov.ua
+    - Phone: +38 (044) 281-88-25, +38 (044) 281-88-05 (Mon-Thu 8:00-17:00, Fri 8:00-15:45)
+    - Weekends and public holidays (24/7): +38 (044) 281-88-01
 #>
 
 #Requires -RunAsAdministrator
@@ -344,8 +345,9 @@ kape.exe --sync
 ## CERT-UA Contact
 
 After collecting evidence:
-- Email: cert@cert.gov.ua
-- Phone: +380 44 281 88 25
+- Email: incidents@cert.gov.ua
+- Phone: +38 (044) 281-88-25, +38 (044) 281-88-05 (Mon-Thu 8:00-17:00, Fri 8:00-15:45)
+- Weekends and public holidays (24/7): +38 (044) 281-88-01
 - Web: https://cert.gov.ua
 
 ## Resources

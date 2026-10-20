@@ -10,8 +10,9 @@
 # UAC Repository: https://github.com/tclahr/uac
 #
 # CERT-UA Contact:
-# - Email: cert@cert.gov.ua
-# - Phone: +380 44 281 88 25
+# - Email: incidents@cert.gov.ua
+# - Phone: +38 (044) 281-88-25, +38 (044) 281-88-05 (Mon-Thu 8:00-17:00, Fri 8:00-15:45)
+# - Weekends and public holidays (24/7): +38 (044) 281-88-01
 #
 
 set -e
@@ -338,8 +339,9 @@ output/
 ## CERT-UA Contact
 
 After collecting evidence:
-- Email: cert@cert.gov.ua
-- Phone: +380 44 281 88 25
+- Email: incidents@cert.gov.ua
+- Phone: +38 (044) 281-88-25, +38 (044) 281-88-05 (Mon-Thu 8:00-17:00, Fri 8:00-15:45)
+- Weekends and public holidays (24/7): +38 (044) 281-88-01
 - Web: https://cert.gov.ua
 
 ## Resources

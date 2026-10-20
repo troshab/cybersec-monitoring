@@ -103,7 +103,7 @@ echo -e "  Провалено: ${RED}$FAILED${NC}"
 echo ""
 
 echo -e "${CYAN}Перевірка в Grafana:${NC}"
-echo "  1. Відкрийте http://10.0.1.2:3000"
+echo "  1. Відкрийте http://192.0.2.10:3000"
 echo "  2. Перейдіть в Explore → Loki"
 echo "  3. Запити:"
 echo ""

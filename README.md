@@ -6,17 +6,17 @@
 
 ## Філософія
 
-> **Логи та моніторинг, за якими ніхто не слідкує — гірше за їх відсутність.**
+> **Логи та моніторинг, за якими ніхто не стежить, гірші за їх відсутність.**
 > Вони створюють хибне відчуття безпеки.
-> Краще мати 5 алертів що працюють, ніж 500 що ігноруються.
+> Краще мати 5 алертів, що працюють, ніж 500, які ігнорують.
 
 ### Ключові принципи
 
-- ✅ Все безкоштовне ПЗ
-- ✅ 20% зусиль для 80% захисту
-- ✅ Виявлення важливіше за запобігання
-- ✅ 6 місяців зберігання логів - рекомендація (не вимога CERT-UA; строк узгодьте з політикою організації)
-- ✅ Мінімум false positives
+- Все безкоштовне ПЗ
+- Спершу найвпливовіші заходи, без надмірної складності
+- Виявлення важливіше за запобігання
+- 6 місяців зберігання логів - рекомендація (не вимога CERT-UA; строк узгодьте з політикою організації)
+- Мінімум false positives
 
 ## Архітектура
 
@@ -87,8 +87,8 @@
 | Redis | 7.4-alpine | не перевірено (образ redis:7.4-alpine) | `server/inventory-stack/docker-compose.yml` |
 | Node Exporter | 1.12.1 | 2026-07-14 | `linux-agent/install-agent.sh` |
 | osquery (Linux) | 5.23.1 | 2026-06-24 | `linux-agent/install-agent.sh` |
-| Grafana Alloy | v1.20.1 (актуальна на перевірку, не запінена) | 2026-09-28 | встановлюється з репозиторію Grafana |
-| Windows Exporter | v0.31.9 | 2026-10-10 | host-agent піни |
+| Grafana Alloy | v1.20.1 (не запінено, ставиться актуальна) | 2026-09-28 | встановлюється з репозиторію Grafana |
+| Windows Exporter | v0.31.9 | 2026-10-10 | `windows-common/05-Install-WindowsExporter.ps1` |
 | restic | 0.19.1 | 2026-07-05 | `posture/backup/*` (вимога в заголовках) |
 | UAC (IR, Linux) | 2.9.1 (піна в репо; актуальна v3.4.0, 2026-09-09) | - | `incident-response/linux/install-uac.sh` |
 | Sysmon (Windows) | не запінено, ставиться з Sysinternals | - | `windows-common/03-Install-Sysmon.ps1` |
@@ -120,37 +120,39 @@ Disk = (Endpoints × 100MB/day × 180 days × 1.5) + 50GB
 ### 1. Підготовка сервера
 
 ```bash
-# Клонування репозиторію
-git clone https://github.com/your-org/cybersec-monitoring.git
+git clone https://github.com/troshab/cybersec-monitoring.git
 cd cybersec-monitoring
 
-# Копіювання та налаштування конфігурації
-# .env вже налаштовано для lab environment
-nano .env  # Змініть всі паролі!
+# Створити .env з випадковими паролями й ключами (наявний .env не перезаписується)
+./server/gen-env.sh
+
+# Вписати свої значення: адресу сервера, ім'я організації, Pushover, SNMP community
+nano .env
 ```
 
 ### 2. Запуск серверної частини
 
 ```bash
-# Запуск головного скрипта встановлення
 sudo ./server/01-install.sh
 ```
 
 ### 3. Розгортання на Windows клієнтах
 
+У прикладах `192.0.2.10` - адреса сервера моніторингу; підставте свою.
+
 ```powershell
-# Запуск від адміністратора на Windows 11 (10.0.1.4)
-.\windows-11-client\Deploy-Client.ps1 -LokiUrl "http://10.0.1.2:3100"
+# Від імені адміністратора на робочій станції Windows 11
+.\windows-11-client\Deploy-Client.ps1 -LokiUrl "http://192.0.2.10:3100"
 ```
 
 ### 4. Розгортання на Windows серверах
 
 ```powershell
-# Запуск від адміністратора на Windows Server 2025 (10.0.1.3)
-.\windows-server-2025\Deploy-Server.ps1 -LokiUrl "http://10.0.1.2:3100"
+# Від імені адміністратора на Windows Server 2025
+.\windows-server-2025\Deploy-Server.ps1 -LokiUrl "http://192.0.2.10:3100"
 ```
 
-### 5. Харденінг систем (опціонально)
+### 5. Харденінг систем (необов'язково)
 
 Центральні скрипти харденінгу застосовують базові налаштування безпеки:
 
@@ -165,64 +167,53 @@ sudo ./server/01-install.sh
 sudo ./linux-agent/00-Harden-Linux.sh
 ```
 
-**Що включено:**
-- Windows: SMB hardening, LLMNR/NetBIOS disable, Pass-the-Hash protection, ASR rules, TLS 1.2/1.3
-- Linux: sysctl security, SSH hardening, ufw firewall, auditd rules
+**Що входить:**
+- Windows: захист SMB, вимкнення LLMNR/NetBIOS, захист від Pass-the-Hash, правила ASR, TLS 1.2/1.3
+- Linux: параметри безпеки sysctl, захист SSH, фаєрвол ufw, правила auditd
 
 ### 6. Перевірка роботи
 
-1. Відкрийте Grafana: `http://10.0.1.2:3000`
-2. Логін: monadmin / (пароль GRAFANA_ADMIN_PASSWORD з .env)
+1. Відкрийте Grafana: `http://192.0.2.10:3000`
+2. Логін: значення `GRAFANA_ADMIN_USER` і `GRAFANA_ADMIN_PASSWORD` з `.env`
 3. Перевірте дашборд "Security Overview"
 
-> **Примітка щодо FleetDM:** Для lab environment використовуються self-signed сертифікати. 
-> При встановленні osquery агентів використовуйте прапорець `-Insecure`:
+> **FleetDM і самопідписаний сертифікат.** Якщо сервер використовує самопідписаний сертифікат (як на навчальному стенді), агентам osquery потрібен прапорець `-Insecure`; для реального розгортання краще передати сертифікат через `-CertPath`:
 > ```powershell
-> .\Deploy-Client.ps1 -LokiUrl "http://10.0.1.2:3100" -FleetUrl "https://10.0.1.2:8080" -FleetEnrollSecret "..." -Insecure
+> .\Deploy-Client.ps1 -LokiUrl "http://192.0.2.10:3100" -FleetUrl "https://192.0.2.10:8080" -FleetEnrollSecret "..." -Insecure
 > ```
 
 ## Структура проєкту
 
 ```
 cybersec-monitoring/
-├── .env                      # Конфігурація середовища
-├── README.md                 # Документація
-├── LICENSE                   # Ліцензія MIT
+├── .env.example              # шаблон конфігурації; .env створює server/gen-env.sh (не в git)
+├── README.md, SECURITY.md, LICENSE
+├── docs/lab.md               # опис навчального стенду
 │
-├── server/                   # Серверна частина
-│   ├── 01-install.sh         # Головний скрипт встановлення
-│   ├── monitoring-stack/     # Grafana, Prometheus, Loki
+├── server/                   # серверна частина
+│   ├── 01-install.sh         # головний скрипт встановлення
+│   ├── gen-env.sh            # генерація .env з випадковими секретами
+│   ├── monitoring-stack/     # Prometheus, Loki, Grafana, Alertmanager, SNMP Exporter, Mailpit
 │   ├── inventory-stack/      # Netdisco, FleetDM
-│   └── alloy/                # Grafana Alloy config (server)
+│   └── alloy/                # конфігурація Grafana Alloy для сервера
 │
-├── windows-common/           # Спільні скрипти Windows
-│   ├── 01-Set-AuditPolicy.ps1
-│   ├── 02-Enable-PowerShellLogging.ps1
-│   ├── 03-Install-Sysmon.ps1
-│   ├── 04-Install-Alloy.ps1      # Grafana Alloy (замінює Promtail)
-│   ├── 05-Install-WindowsExporter.ps1
-│   └── 06-Install-OsqueryAgent.ps1
+├── posture/                  # перевірки базової лінії CIS IG1
+│   ├── osquery/              # пакет запитів Fleet (ig1-posture.yml)
+│   └── backup/               # резервні копії restic і перевірка відновлення
 │
-├── windows-11-client/        # Для робочих станцій
-│   ├── 00-Harden-Client.ps1  # Центральний скрипт харденінгу
-│   ├── Deploy-Client.ps1
-│   └── config.alloy          # Alloy config для клієнтів
+├── windows-common/           # спільні скрипти Windows: аудит, журналювання PowerShell,
+│                             # Sysmon, Alloy, Windows Exporter, osquery, діагностика
+├── windows-11-client/        # робочі станції: харденінг, телеметрія, Deploy-Client.ps1
+├── windows-server-2025/      # сервери: харденінг, аудит AD/DHCP/DNS/файлового сервера/NPS,
+│                             # Deploy-Server.ps1
+├── linux-agent/              # Linux: харденінг, встановлення агентів, config.alloy
 │
-├── windows-server-2025/      # Для серверів
-│   ├── 00-Harden-Server.ps1  # Центральний скрипт харденінгу
-│   ├── Deploy-Server.ps1
-│   └── config.alloy          # Alloy config для серверів
+├── incident-response/        # збір артефактів: KAPE (Windows), UAC (Linux)
 │
-├── linux-agent/              # Для Linux систем
-│   ├── 00-Harden-Linux.sh    # Центральний скрипт харденінгу
-│   ├── install-agent.sh
-│   └── config.alloy          # Alloy config для Linux
-│
-└── testing/                  # Тести для перевірки моніторингу
-    └── detection-testing/    # Об'єднані скрипти по категоріях
-        ├── windows/          # 8 PowerShell тестів + Run-AllTests.ps1
-        ├── linux/            # 4 Bash тести + run-all-tests.sh
-        └── kali/             # 6 Bash сценаріїв + run-all-tests.sh (лише лабораторія)
+└── testing/detection-testing/
+    ├── windows/              # 8 тестів PowerShell + Run-AllTests.ps1
+    ├── linux/                # 4 тести Bash + run-all-tests.sh
+    └── kali/                 # 6 сценаріїв Bash + run-all-tests.sh (лише ізольований стенд)
 ```
 
 ## Posture-шар (CIS IG1)
@@ -265,15 +256,15 @@ restic forget --tag restic --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --pru
 
 | Event ID | Опис | Критичність |
 |----------|------|-------------|
-| 1102 | Журнал аудиту очищено | 🔴 Critical |
-| 4624 | Успішний вхід | 🟡 Medium |
-| 4625 | Невдалий вхід | 🟠 High |
-| 4672 | Вхід з привілеями адміна | 🟠 High |
-| 4720 | Створено користувача | 🔴 Critical |
-| 4732 | Додано до локальної групи | 🔴 Critical |
-| 4697 | Встановлено сервіс | 🔴 Critical |
-| 4698 | Створено scheduled task | 🔴 Critical |
-| 7045 | Новий сервіс (System log) | 🔴 Critical |
+| 1102 | Журнал аудиту очищено | Критична |
+| 4624 | Успішний вхід | Середня |
+| 4625 | Невдалий вхід | Висока |
+| 4672 | Вхід з привілеями адміна | Висока |
+| 4720 | Створено користувача | Критична |
+| 4732 | Додано до локальної групи | Критична |
+| 4697 | Встановлено сервіс | Критична |
+| 4698 | Створено scheduled task | Критична |
+| 7045 | Новий сервіс (System log) | Критична |
 
 ## Тестування
 
@@ -316,21 +307,15 @@ cd testing/detection-testing/kali
 
 ## Безпека
 
-- **Скомпрометовано: ключ Fleet і паролі лабораторії.** Раніше в git були закомічені ключ Fleet і паролі лабораторного середовища (колишній спільний пароль лабораторії та стандартний пароль Kali). Вважайте їх скомпрометованими і змініть на всіх машинах; з історії git вони не зникли. Розглядайте їх як скомпрометовані: ротуйте ключ Fleet, JWT-ключі й усі паролі перед будь-яким використанням поза лабораторією. Історія git зберігає їх; для повного усунення потрібно переписати історію або створити новий репозиторій.
-- **Секрети.** `.env` не відстежується, шаблон - `.env.example`; значення генеруються `server/gen-env.sh`. Порти моніторингу прив'язані до loopback. `--web.enable-admin-api` вимкнено.
-- **Retention Loki 6 місяців.** Це рекомендація, не вимога CERT-UA.
+- **Секрети.** `.env` не відстежується, шаблон - `.env.example`; паролі й ключі генерує `server/gen-env.sh` під час встановлення, тож кожне розгортання має власні значення. Prometheus, Alertmanager і Mailpit прив'язані до loopback (`LOCAL_BIND_IP`, за замовчуванням `127.0.0.1`). Grafana і Loki за замовчуванням слухають `0.0.0.0` (`GRAFANA_BIND_IP`, `LOKI_BIND_IP`), бо до них звертаються агенти й оператор; обмежте доступ фаєрволом або задайте конкретний IP. Admin API Prometheus вимкнено (прапорець `--web.enable-admin-api` не передається).
+- **Значення з навчального стенду.** Ранні версії репозиторію містили паролі навчального стенду й ключ Fleet; в історії git вони лишились. Поточні файли їх не використовують, тож у реальній організації вони не діють, якщо ви не перенесли їх вручну.
+- **Строк зберігання логів у Loki - 6 місяців.** Це рекомендація, не вимога CERT-UA.
 - **Резервні копії.** Пароль restic тримайте поза репозиторієм (див. розділ Posture-шар).
+- Як повідомити про вразливість - у [SECURITY.md](SECURITY.md).
 
-## Lab Environment
+## Навчальний стенд
 
-| Host | IP | OS | Credentials |
-|------|----|----|-------------|
-| Monitoring Server | 10.0.1.2 | Debian 13 | власний обліковий запис, пароль з менеджера паролів |
-| Domain Controller | 10.0.1.3 | Windows Server 2025 | LAB\<admin>, пароль з менеджера паролів |
-| Windows Client | 10.0.1.4 | Windows 11 | LAB\<user>, пароль з менеджера паролів |
-| Kali Linux | 10.0.1.5 | Kali (поточний випуск) | змініть пароль за замовчуванням після встановлення |
-
-**Domain:** LAB (lab.local)
+Адреси й облікові записи стенду, на якому перевірено сценарії курсу, - у [docs/lab.md](docs/lab.md).
 
 ## Ліцензія
 
