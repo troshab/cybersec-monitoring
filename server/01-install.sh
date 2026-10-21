@@ -581,6 +581,9 @@ install_node_exporter() {
 
     # Користувач
     useradd --system --no-create-home --shell /bin/false node_exporter 2>/dev/null || true
+    # Textfile collector: posture/backup scripts write *.prom files here (backup age, restore test)
+    mkdir -p /var/lib/node_exporter/textfile
+    chmod 0755 /var/lib/node_exporter/textfile
 
     # Systemd сервіс
     cat > /etc/systemd/system/node_exporter.service << 'EOF'
@@ -592,7 +595,7 @@ After=network.target
 User=node_exporter
 Group=node_exporter
 Type=simple
-ExecStart=/usr/local/bin/node_exporter
+ExecStart=/usr/local/bin/node_exporter --collector.textfile.directory=/var/lib/node_exporter/textfile
 Restart=always
 RestartSec=10
 
