@@ -152,7 +152,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" |~ \"DestinationPort=(4444|5555|6666|1337|31337)\" [$__range])",
+          "expr": "count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | destination_port=~\"4444|5555|6666|1337|31337\" | drop event_data [$__range])",
           "refId": "A"
         }
       ],
@@ -189,11 +189,11 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_firewall\"} |= \"BLOCK\" [$__range])",
+          "expr": "count_over_time({job=\"windows_firewall\"} | json event_id=\"event_id\" | event_id=~\"2003|2004|2005|2006\" [$__range])",
           "refId": "A"
         }
       ],
-      "title": "Firewall Blocks",
+      "title": "Firewall Rule/Configuration Changes",
       "type": "stat"
     },
     {
@@ -226,7 +226,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\"} |~ \"<EventID>22</EventID>\" [$__range])",
+          "expr": "count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\" | event_id=\"22\" [$__range])",
           "refId": "A"
         }
       ],
@@ -377,7 +377,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum by (host) (count_over_time({job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" [$__interval]))",
+          "expr": "sum by (host) (count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\" | event_id=\"3\" [$__interval]))",
           "legendFormat": "{{host}}",
           "refId": "A"
         }
@@ -402,7 +402,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" | json | line_format \"{{.image}} -> {{.destinationIp}}:{{.destinationPort}}\"",
+          "expr": "{job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]Image['\"]>(?P<image>[^<]*)<` | regexp `Name=['\"]DestinationIp['\"]>(?P<destination_ip>[^<]*)<` | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | line_format \"{{.image}} -> {{.destination_ip}}:{{.destination_port}}\"",
           "refId": "A"
         }
       ],
@@ -426,7 +426,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_sysmon\"} |~ \"<EventID>22</EventID>\" | json | line_format \"{{.queryName}}\"",
+          "expr": "{job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"22\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]QueryName['\"]>(?P<query_name>[^<]*)<` | line_format \"{{.query_name}}\"",
           "refId": "A"
         }
       ],
@@ -495,7 +495,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" |~ \"DestinationPort=445\" [$__range])",
+          "expr": "count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | destination_port=~\"445\" | drop event_data [$__range])",
           "refId": "A"
         }
       ],
@@ -532,7 +532,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" |~ \"DestinationPort=3389\" [$__range])",
+          "expr": "count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | destination_port=~\"3389\" | drop event_data [$__range])",
           "refId": "A"
         }
       ],
@@ -569,7 +569,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" |~ \"DestinationPort=(5985|5986)\" [$__range])",
+          "expr": "count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | destination_port=~\"5985|5986\" | drop event_data [$__range])",
           "refId": "A"
         }
       ],
@@ -605,7 +605,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_object_access\"} |= \"5140\" |~ \"(C\\$|ADMIN\\$|IPC\\$)\" [$__range])",
+          "expr": "count_over_time({job=\"windows_object_access\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"5140\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]ShareName['\"]>(?P<share_name>[^<]*)<` | share_name=~`.*(C\\$|ADMIN\\$|IPC\\$)` | drop event_data [$__range])",
           "refId": "A"
         }
       ],
@@ -629,7 +629,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_sysmon\"} |~ \"<EventID>3</EventID>\" |~ \"DestinationPort=(445|3389|5985|5986)\" | json | line_format \"{{.host}}: {{.image}} -> {{.destinationIp}}:{{.destinationPort}}\"",
+          "expr": "{job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | destination_port=~\"445|3389|5985|5986\" | regexp `Name=['\"]Image['\"]>(?P<image>[^<]*)<` | regexp `Name=['\"]DestinationIp['\"]>(?P<destination_ip>[^<]*)<` | line_format \"{{.host}}: {{.image}} -> {{.destination_ip}}:{{.destination_port}}\"",
           "refId": "A"
         }
       ],
@@ -653,7 +653,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_rdp\"} |~ \"21|22|23|24|25\"",
+          "expr": "{job=\"windows_rdp\"} | json event_id=\"event_id\" | event_id=~\"21|22|23|24|25\"",
           "refId": "A"
         }
       ],

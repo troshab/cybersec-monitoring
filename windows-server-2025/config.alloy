@@ -173,6 +173,20 @@ loki.source.windowsevent "ad_ds" {
   }
   forward_to = [loki.write.default.receiver]
 }
+// AD object-change audit events are emitted in Security, not Directory Service.
+loki.source.windowsevent "ad_changes" {
+  eventlog_name = "Security"
+  xpath_query   = "Event[System[(EventID=5136 or EventID=5137 or EventID=5141)]]"
+  labels = {
+    job       = "windows_adds",
+    host      = env("COMPUTERNAME"),
+    os_type   = "windows_server",
+    category  = "ad_changes",
+    severity  = "high",
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
 
 // =============================================================================
 // DNS Server Events

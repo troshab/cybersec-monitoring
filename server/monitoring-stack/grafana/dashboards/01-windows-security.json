@@ -62,7 +62,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_auth\"} |= \"4625\" [$__range])",
+          "expr": "count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\" [$__range])",
           "refId": "A"
         }
       ],
@@ -106,7 +106,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_accounts\"} |~ \"4720|4728|4732\" [$__range])",
+          "expr": "count_over_time({job=\"windows_accounts\"} | json event_id=\"event_id\" | event_id=~\"4720|4728|4732\" [$__range])",
           "refId": "A"
         }
       ],
@@ -149,7 +149,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_policy\"} |= \"1102\" [$__range])",
+          "expr": "count_over_time({job=\"windows_policy\"} | json event_id=\"event_id\" | event_id=\"1102\" [$__range])",
           "refId": "A"
         }
       ],
@@ -193,7 +193,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_services\"} |= \"7045\" [$__range])",
+          "expr": "count_over_time({job=\"windows_services\"} | json event_id=\"event_id\" | event_id=\"7045\" [$__range])",
           "refId": "A"
         }
       ],
@@ -280,7 +280,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_defender\"} |~ \"1116|1117\" [$__range])",
+          "expr": "count_over_time({job=\"windows_defender\"} | json event_id=\"event_id\" | event_id=~\"1116|1117\" [$__range])",
           "refId": "A"
         }
       ],
@@ -331,7 +331,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum by (host) (count_over_time({job=\"windows_auth\"} |= \"4625\" [$__interval]))",
+          "expr": "sum by (host) (count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\" [$__interval]))",
           "legendFormat": "{{host}}",
           "refId": "A"
         }
@@ -383,7 +383,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum by (event_id) (count_over_time({job=~\"windows_.*\", category=\"authentication\"} [$__interval]))",
+          "expr": "sum by (event_id) (count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" [$__interval]))",
           "legendFormat": "Event {{event_id}}",
           "refId": "A"
         }
@@ -411,7 +411,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_accounts\"} |~ \"4720|4722|4724|4726|4728|4732|4756\"",
+          "expr": "{job=\"windows_accounts\"} | json event_id=\"event_id\" | event_id=~\"4720|4722|4724|4726|4728|4732\"",
           "refId": "A"
         }
       ],
@@ -465,7 +465,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_sysmon\"} |~ \"<EventID>1</EventID>\" | json | line_format \"{{.image}} {{.commandLine}}\"",
+          "expr": "{job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"1\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]Image['\"]>(?P<image>[^<]*)<` | regexp `Name=['\"]CommandLine['\"]>(?P<command_line>[^<]*)<` | line_format \"{{.image}} {{.command_line}}\"",
           "refId": "A"
         }
       ],
@@ -492,7 +492,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_services\"} |= \"7045\"",
+          "expr": "{job=\"windows_services\"} | json event_id=\"event_id\" | event_id=\"7045\"",
           "refId": "A"
         }
       ],
@@ -519,7 +519,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_persistence\"} |~ \"4698|4699|4700|4701|4702\"",
+          "expr": "{job=\"windows_persistence\"} | json event_id=\"event_id\" | event_id=~\"4698|4699|4700|4701|4702\"",
           "refId": "A"
         }
       ],
@@ -546,7 +546,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_policy\"} |~ \"4703|4704|4705|4719\"",
+          "expr": "{job=\"windows_policy\"} | json event_id=\"event_id\" | event_id=~\"4703|4704|4705|4719\"",
           "refId": "A"
         }
       ],

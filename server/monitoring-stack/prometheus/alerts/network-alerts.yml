@@ -64,7 +64,7 @@ groups:
       # -----------------------------------------------------------------------
       - alert: NetworkInterfaceHighUtilization
         expr: |
-          (rate(ifHCInOctets[5m]) + rate(ifHCOutOctets[5m])) / ifHighSpeed / 1000000 * 100 > 80
+          (8 * rate(ifHCInOctets[5m]) / (ifHighSpeed * 1000000) * 100 > 80) or (8 * rate(ifHCOutOctets[5m]) / (ifHighSpeed * 1000000) * 100 > 80)
         for: 10m
         labels:
           severity: warning
@@ -134,64 +134,5 @@ groups:
           summary: "Port flapping виявлено"
           description: "Інтерфейс {{ $labels.ifDescr }} на {{ $labels.instance }} часто змінює стан"
 
-  # ===========================================================================
-  # Device Health
-  # ===========================================================================
-  - name: network_device_health
-    interval: 60s
-    rules:
-      # -----------------------------------------------------------------------
-      # High CPU on network device
-      # -----------------------------------------------------------------------
-      - alert: NetworkDeviceHighCPU
-        expr: |
-          cpmCPUTotal5minRev > 80 or hrProcessorLoad > 80
-        for: 10m
-        labels:
-          severity: warning
-          category: network
-        annotations:
-          summary: "Високе навантаження CPU на мережевому пристрої"
-          description: "CPU > 80% на {{ $labels.instance }}"
-
-      # -----------------------------------------------------------------------
-      # High memory on network device
-      # -----------------------------------------------------------------------
-      - alert: NetworkDeviceHighMemory
-        expr: |
-          (ciscoMemoryPoolUsed / (ciscoMemoryPoolUsed + ciscoMemoryPoolFree)) * 100 > 85
-        for: 10m
-        labels:
-          severity: warning
-          category: network
-        annotations:
-          summary: "Високе використання пам'яті на мережевому пристрої"
-          description: "Memory > 85% на {{ $labels.instance }}"
-
-      # -----------------------------------------------------------------------
-      # Device temperature high
-      # -----------------------------------------------------------------------
-      - alert: NetworkDeviceHighTemperature
-        expr: |
-          entPhySensorValue{entPhySensorType="8"} > 60
-        for: 5m
-        labels:
-          severity: warning
-          category: hardware
-        annotations:
-          summary: "Висока температура мережевого пристрою"
-          description: "Температура {{ $value }}°C на {{ $labels.instance }}"
-
-      # -----------------------------------------------------------------------
-      # Power supply failure
-      # -----------------------------------------------------------------------
-      - alert: NetworkDevicePowerSupplyFailed
-        expr: |
-          cefcFRUPowerOperStatus != 2
-        for: 1m
-        labels:
-          severity: critical
-          category: hardware
-        annotations:
-          summary: "Збій блока живлення"
-          description: "Power supply проблема на {{ $labels.instance }}"
+  # Vendor CPU/memory/power rules require additional exporter modules.
+  # See network-device-health.yml.example; if_mib does not export them.

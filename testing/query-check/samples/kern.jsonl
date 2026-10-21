@@ -1,0 +1,1 @@
+{"labels":{"job":"kern","host":"linux-demo","os_type":"linux","category":"kernel","severity":"high"},"line":"Oct 21 12:00:00 linux-demo kernel: synthetic segfault error"}

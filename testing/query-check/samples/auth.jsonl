@@ -1,0 +1,10 @@
+{"labels":{"job":"auth","host":"linux-demo","os_type":"linux","category":"authentication","severity":"high"},"line":"Oct 21 12:00:00 linux-demo sshd[100]: Failed password for invalid user bob from 192.0.2.50 port 4242 ssh2"}
+{"labels":{"job":"auth","host":"linux-demo","os_type":"linux","category":"authentication","severity":"high"},"line":"Oct 21 12:00:01 linux-demo sshd[100]: Accepted publickey for bob from 192.0.2.50 port 4242 ssh2"}
+{"labels":{"job":"auth","host":"linux-demo","os_type":"linux","category":"authentication","severity":"high"},"line":"Oct 21 12:00:02 linux-demo sudo[101]: bob : TTY=pts/0 ; PWD=/home/bob ; USER=root ; COMMAND=/usr/bin/id"}
+{"labels":{"job":"auth","host":"linux-demo","os_type":"linux","category":"authentication","severity":"high"},"line":"Oct 21 12:00:03 linux-demo useradd[102]: new user: name=demo, UID=1001, GID=1001, home=/home/demo, shell=/bin/bash"}
+{"labels":{"job":"auth","instance":"monitoring-server","source":"file"},"line":"Oct 21 12:00:00 linux-demo sshd[100]: Failed password for invalid user bob from 192.0.2.50 port 4242 ssh2"}
+{"labels":{"job":"auth","instance":"monitoring-server","source":"file"},"line":"Oct 21 12:00:01 linux-demo sshd[100]: Accepted publickey for bob from 192.0.2.50 port 4242 ssh2"}
+{"labels":{"job":"auth","instance":"monitoring-server","source":"file"},"line":"Oct 21 12:00:02 linux-demo sudo[101]: bob : TTY=pts/0 ; PWD=/home/bob ; USER=root ; COMMAND=/usr/bin/id"}
+{"labels":{"job":"auth","instance":"monitoring-server","source":"file"},"line":"Oct 21 12:00:03 linux-demo useradd[102]: new user: name=demo, UID=1001, GID=1001, home=/home/demo, shell=/bin/bash"}
+{"labels":{"instance":"monitoring-server","job":"auth","source":"file"},"line":"Oct 21 12:00:04 linux-demo sshd[120]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=2001:db8::50 user=pam-user"}
+{"labels":{"category":"authentication","host":"linux-demo","job":"auth","os_type":"linux","severity":"high"},"line":"Oct 21 12:00:04 linux-demo sshd[120]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=2001:db8::50 user=pam-user"}

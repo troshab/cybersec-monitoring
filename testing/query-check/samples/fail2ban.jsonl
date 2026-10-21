@@ -1,0 +1,1 @@
+{"labels":{"job":"fail2ban","host":"linux-demo","os_type":"linux","category":"security","severity":"high","jail":"sshd","action":"Ban","ip":"192.0.2.50"},"line":"2026-10-21 12:00:00,000 fail2ban.actions [111]: NOTICE [sshd] Ban 192.0.2.50"}

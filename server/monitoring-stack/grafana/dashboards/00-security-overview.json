@@ -189,7 +189,7 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({job=\"windows_accounts\"} |~ \"4732|4720\" [24h])",
+          "expr": "count_over_time({job=\"windows_accounts\"} | json event_id=\"event_id\" | event_id=~\"4732|4720\" [24h])",
           "refId": "A"
         }
       ],
@@ -231,7 +231,7 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({job=\"windows_policy\"} |= \"1102\" [24h])",
+          "expr": "count_over_time({job=\"windows_policy\"} | json event_id=\"event_id\" | event_id=\"1102\" [24h])",
           "refId": "A"
         }
       ],
@@ -274,7 +274,7 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({job=\"windows_services\"} |= \"7045\" [24h])",
+          "expr": "count_over_time({job=\"windows_services\"} | json event_id=\"event_id\" | event_id=\"7045\" [24h])",
           "refId": "A"
         }
       ],
@@ -334,7 +334,7 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum by (host) (count_over_time({job=\"windows_auth\"} |= \"4625\" [$__interval]))",
+          "expr": "sum by (host) (count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\" [$__interval]))",
           "legendFormat": "{{ host }}",
           "refId": "A"
         }
@@ -419,7 +419,7 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{job=~\"windows_.*\"} |~ \"1102|4720|4732|4697|4698|7045\"",
+          "expr": "{job=~\"windows_.*\"} | json event_id=\"event_id\" | event_id=~\"1102|4720|4732|4697|4698|7045\"",
           "refId": "A"
         }
       ],

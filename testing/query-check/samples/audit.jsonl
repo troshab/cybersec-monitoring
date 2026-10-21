@@ -1,0 +1,4 @@
+{"labels":{"job":"audit","host":"linux-demo","os_type":"linux","category":"audit","severity":"high"},"line":"type=USER_CMD msg=audit(1792584000.001:1): pid=101 uid=1000 cmd=\"id\""}
+{"labels":{"job":"audit","host":"linux-demo","os_type":"linux","category":"audit","severity":"high"},"line":"type=EXECVE msg=audit(1792584000.002:2): argc=1 a0=\"id\""}
+{"labels":{"job":"audit","host":"linux-demo","os_type":"linux","category":"audit","severity":"high"},"line":"type=ADD_USER msg=audit(1792584000.003:3): acct=\"demo\" res=success"}
+{"labels":{"job":"audit","host":"linux-demo","os_type":"linux","category":"audit","severity":"high"},"line":"type=USER_MGMT msg=audit(1792584000.004:4): acct=\"demo\" res=success"}

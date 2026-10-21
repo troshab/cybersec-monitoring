@@ -182,7 +182,7 @@ groups:
       # -----------------------------------------------------------------------
       - alert: WindowsTooManyConnections
         expr: |
-          windows_tcp_connections_established > 1000
+          sum by (instance) (windows_tcp_connections_established) > 1000
         for: 5m
         labels:
           severity: warning

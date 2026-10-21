@@ -1,0 +1,42 @@
+# Not loaded by prometheus.yml: the default scrape enables only if_mib.
+# For supported Cisco hardware, add cisco_device to that target's module list.
+# CPU: CISCO-PROCESS-MIB (cpmCPUTotal5minRev), or enable hrDevice on a target
+# implementing HOST-RESOURCES-MIB (hrProcessorLoad).
+# Memory: cisco_device / CISCO-MEMORY-POOL-MIB.
+# Power: cisco_device / CISCO-ENTITY-FRU-CONTROL-MIB; EnumAsStateSet exports
+# one 0/1 series per state, not the raw numeric SNMP enumeration.
+# Confirm the actual /snmp output before renaming this file to a .yml file.
+# Reference: prometheus/snmp_exporter v0.30.1 snmp.yml, checked 2026-10-21.
+# Temperature is deliberately omitted: the default modules do not export
+# entPhySensorValue and sensor scale/precision are device-specific.
+groups:
+  - name: network_device_health
+    interval: 60s
+    rules:
+      - alert: NetworkDeviceHighCPU
+        expr: cpmCPUTotal5minRev > 80 or hrProcessorLoad > 80
+        for: 10m
+        labels:
+          severity: warning
+          category: network
+        annotations:
+          summary: "Високе навантаження CPU на мережевому пристрої"
+          description: "CPU > 80% на {{ $labels.instance }}"
+      - alert: NetworkDeviceHighMemory
+        expr: (ciscoMemoryPoolUsed / (ciscoMemoryPoolUsed + ciscoMemoryPoolFree)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          category: network
+        annotations:
+          summary: "Високе використання пам'яті на мережевому пристрої"
+          description: "Memory > 85% на {{ $labels.instance }}"
+      - alert: NetworkDevicePowerSupplyFailed
+        expr: cefcFRUPowerOperStatus{cefcFRUPowerOperStatus=~"failed|onButFanFail|onButInlinePowerFail"} == 1
+        for: 1m
+        labels:
+          severity: critical
+          category: hardware
+        annotations:
+          summary: "Збій блока живлення"
+          description: "Power supply проблема на {{ $labels.instance }}"

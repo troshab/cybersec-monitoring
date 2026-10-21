@@ -1,0 +1,1 @@
+{"labels":{"job":"syslog","host":"linux-demo","os_type":"linux","category":"system","severity":"medium"},"line":"Oct 21 12:00:00 linux-demo CRON[110]: (root) CMD (/usr/bin/true)"}

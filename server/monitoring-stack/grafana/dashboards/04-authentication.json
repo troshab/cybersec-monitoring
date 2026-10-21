@@ -49,7 +49,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({category=\"authentication\"} |~ \"(?i)failed|invalid|4625\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\" [$__range]) or count_over_time({job=~\"auth|secure|systemd-journal\"} |~ `(?i)failed password|failed publickey|invalid user|authentication failure` [$__range]))",
           "refId": "A"
         }
       ],
@@ -82,7 +82,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({category=\"authentication\"} |= \"4624\" [$__range])",
+          "expr": "count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4624\" [$__range])",
           "refId": "A"
         }
       ],
@@ -119,7 +119,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_auth\"} |= \"4672\" [$__range])",
+          "expr": "count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4672\" [$__range])",
           "refId": "A"
         }
       ],
@@ -155,7 +155,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_auth\"} |= \"4740\" [$__range])",
+          "expr": "count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4740\" [$__range])",
           "refId": "A"
         }
       ],
@@ -229,7 +229,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"auth\"} |~ \"sshd.*Accepted\" [$__range])",
+          "expr": "count_over_time({job=~\"auth|secure|systemd-journal\"} |~ \"Accepted (password|publickey|keyboard-interactive)\" [$__range])",
           "refId": "A"
         }
       ],
@@ -274,13 +274,13 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum(count_over_time({category=\"authentication\"} |~ \"(?i)failed|4625\" [$__interval]))",
+          "expr": "sum(count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\" [$__interval]) or count_over_time({job=~\"auth|secure|systemd-journal\"} |~ `(?i)failed password|failed publickey|invalid user|authentication failure` [$__interval]))",
           "legendFormat": "Failed",
           "refId": "A"
         },
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum(count_over_time({category=\"authentication\"} |= \"4624\" [$__interval]))",
+          "expr": "sum(count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4624\" [$__interval]) or count_over_time({job=~\"auth|secure|systemd-journal\"} |~ \"Accepted (password|publickey|keyboard-interactive)\" [$__interval]))",
           "legendFormat": "Success",
           "refId": "B"
         }
@@ -311,7 +311,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum by (logon_type) (count_over_time({job=\"windows_auth\"} |= \"4624\" | json [$__range]))",
+          "expr": "sum by (logon_type) (count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"4624\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]LogonType['\"]>(?P<logon_type>[^<]*)<` | logon_type!=\"\" | drop event_data [$__range]))",
           "legendFormat": "Type {{logon_type}}",
           "refId": "A"
         }
@@ -342,7 +342,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum by (host) (count_over_time({category=\"authentication\"} |~ \"(?i)failed|4625\" [$__range]))",
+          "expr": "sum by (host) (count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\" [$__range]) or count_over_time({job=~\"auth|secure|systemd-journal\"} |~ `(?i)failed password|failed publickey|invalid user|authentication failure` | label_format host=\"{{or .host .instance}}\" [$__range]))",
           "legendFormat": "{{host}}",
           "refId": "A"
         }
@@ -367,7 +367,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_auth\"} |= \"4625\"",
+          "expr": "{job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\"",
           "refId": "A"
         }
       ],
@@ -391,7 +391,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"auth\"} |~ \"(?i)failed|invalid\"",
+          "expr": "{job=~\"auth|secure|systemd-journal\"} |~ `(?i)failed password|failed publickey|invalid user|authentication failure`",
           "refId": "A"
         }
       ],
@@ -415,7 +415,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_auth\"} |= \"4672\"",
+          "expr": "{job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4672\"",
           "refId": "A"
         }
       ],
@@ -439,7 +439,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=\"windows_nps\"} |~ \"6272|6273\"",
+          "expr": "{job=\"windows_nps\"} | json event_id=\"event_id\" | event_id=~\"6272|6273\"",
           "refId": "A"
         }
       ],
@@ -467,7 +467,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "topk(10, sum by (user) (count_over_time({category=\"authentication\"} |~ \"(?i)failed|4625\" | json [$__range])))",
+          "expr": "topk(10, sum by (user) (count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"4625\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]TargetUserName['\"]>(?P<user>[^<]*)<` | user!=\"\" | drop event_data [$__range]) or count_over_time({job=~\"auth|secure|systemd-journal\"} |~ `(?i)failed password|failed publickey|invalid user|authentication failure` | regexp `(?:Failed (?:password|publickey) for (?:invalid user )?|Invalid user |(?:^|\\s)user=)(?P<user>\\S+)` | user!=\"\" | drop event_data [$__range])))",
           "refId": "A"
         }
       ],
@@ -498,7 +498,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "topk(10, sum by (source_ip) (count_over_time({category=\"authentication\"} |~ \"(?i)failed|4625\" | json [$__range])))",
+          "expr": "topk(10, sum by (source_ip) (count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"4625\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]IpAddress['\"]>(?P<source_ip>[^<]*)<` | source_ip!=\"\" | drop event_data [$__range]) or count_over_time({job=~\"auth|secure|systemd-journal\"} |~ `(?i)failed password|failed publickey|invalid user|authentication failure` | regexp `(?:from |rhost=)(?P<source_ip>[0-9a-fA-F:.]+)` | source_ip!=\"\" | drop event_data [$__range])))",
           "refId": "A"
         }
       ],

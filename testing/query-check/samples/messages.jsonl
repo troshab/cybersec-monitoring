@@ -1,0 +1,1 @@
+{"labels":{"job":"messages","instance":"monitoring-server","source":"file"},"line":"Oct 21 12:00:00 linux-demo CRON[110]: (root) CMD (/usr/bin/true)"}

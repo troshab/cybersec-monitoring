@@ -72,8 +72,8 @@ groups:
       # -----------------------------------------------------------------------
       - alert: MonitoringDiskSpaceCritical
         expr: |
-          (node_filesystem_avail_bytes{instance="monitoring-server",mountpoint="/"}
-           / node_filesystem_size_bytes{instance="monitoring-server",mountpoint="/"} * 100) < 10
+          (node_filesystem_avail_bytes{hostname="monitoring-server",mountpoint="/"}
+           / node_filesystem_size_bytes{hostname="monitoring-server",mountpoint="/"} * 100) < 10
         for: 5m
         labels:
           severity: critical
@@ -88,7 +88,7 @@ groups:
       # -----------------------------------------------------------------------
       - alert: MonitoringHighCPU
         expr: |
-          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle",instance="monitoring-server"}[5m])) * 100) > 90
+          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle",hostname="monitoring-server"}[5m])) * 100) > 90
         for: 10m
         labels:
           severity: high
@@ -102,8 +102,8 @@ groups:
       # -----------------------------------------------------------------------
       - alert: MonitoringHighMemory
         expr: |
-          (1 - (node_memory_MemAvailable_bytes{instance="monitoring-server"}
-           / node_memory_MemTotal_bytes{instance="monitoring-server"})) * 100 > 90
+          (1 - (node_memory_MemAvailable_bytes{hostname="monitoring-server"}
+           / node_memory_MemTotal_bytes{hostname="monitoring-server"})) * 100 > 90
         for: 5m
         labels:
           severity: high

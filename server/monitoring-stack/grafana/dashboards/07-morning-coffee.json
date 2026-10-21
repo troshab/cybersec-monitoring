@@ -90,7 +90,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=~\"windows_.*\"} |~ \"1102|4732|7045|4698\" [$__range])",
+          "expr": "count_over_time({job=~\"windows_.*\"} | json event_id=\"event_id\" | event_id=~\"1102|4732|7045|4698\" [$__range])",
           "refId": "A"
         }
       ],
@@ -127,7 +127,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_accounts\"} |= \"4732\" [$__range])",
+          "expr": "count_over_time({job=\"windows_accounts\"} | json event_id=\"event_id\" | event_id=\"4732\" [$__range])",
           "refId": "A"
         }
       ],
@@ -165,7 +165,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_services\"} |= \"7045\" [$__range])",
+          "expr": "count_over_time({job=\"windows_services\"} | json event_id=\"event_id\" | event_id=\"7045\" [$__range])",
           "refId": "A"
         }
       ],
@@ -203,7 +203,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_auth\"} |= \"4625\" [$__range])",
+          "expr": "count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\" [$__range])",
           "refId": "A"
         }
       ],
@@ -241,7 +241,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_persistence\"} |= \"4698\" [$__range])",
+          "expr": "count_over_time({job=\"windows_persistence\"} | json event_id=\"event_id\" | event_id=\"4698\" [$__range])",
           "refId": "A"
         }
       ],
@@ -278,7 +278,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_policy\"} |= \"1102\" [$__range])",
+          "expr": "count_over_time({job=\"windows_policy\"} | json event_id=\"event_id\" | event_id=\"1102\" [$__range])",
           "refId": "A"
         }
       ],
@@ -368,7 +368,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum by (host) (count_over_time({job=\"windows_auth\"} |= \"4625\" [$__interval]))",
+          "expr": "sum by (host) (count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\" [$__interval]))",
           "legendFormat": "{{host}}",
           "refId": "A"
         }
@@ -418,7 +418,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "sum by (host) (count_over_time({job=~\"windows_.*\"} |~ \"1102|4732|7045|4698\" [$__interval]))",
+          "expr": "sum by (host) (count_over_time({job=~\"windows_.*\"} | json event_id=\"event_id\" | event_id=~\"1102|4732|7045|4698\" [$__interval]))",
           "legendFormat": "{{host}}",
           "refId": "A"
         }
@@ -480,7 +480,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "{job=~\"windows_.*\"} |~ \"1102|4732|7045|4698|4720|4726\"",
+          "expr": "{job=~\"windows_.*\"} | json event_id=\"event_id\" | event_id=~\"1102|4732|7045|4698|4720|4726\"",
           "refId": "A"
         }
       ],

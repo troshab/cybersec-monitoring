@@ -20,8 +20,8 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="windows_policy"} |= "1102" [5m])'
-              queryType: range
+              expr: 'count_over_time({job="windows_policy"} | json event_id="event_id" | event_id="1102" [5m])'
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
@@ -71,8 +71,8 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="windows_accounts"} |= "4732" [5m])'
-              queryType: range
+              expr: 'count_over_time({job="windows_accounts"} | json event_id="event_id" | event_id="4732" [5m])'
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
@@ -122,8 +122,8 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="windows_services"} |= "7045" [5m])'
-              queryType: range
+              expr: 'count_over_time({job="windows_services"} | json event_id="event_id" | event_id="7045" [5m])'
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
@@ -173,8 +173,8 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="windows_persistence"} |= "4698" [5m])'
-              queryType: range
+              expr: 'count_over_time({job="windows_persistence"} | json event_id="event_id" | event_id="4698" [5m])'
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
@@ -225,7 +225,7 @@ groups:
             datasourceUid: loki
             model:
               expr: 'count_over_time({job="windows_powershell"} |~ "(?i)encodedcommand|downloadstring|invoke-mimikatz|invoke-expression|bypass|hidden|iex\\s*\\(" [5m])'
-              queryType: range
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
@@ -280,8 +280,8 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="windows_auth"} |= "4625" [5m])'
-              queryType: range
+              expr: 'count_over_time({job="windows_auth"} | json event_id="event_id" | event_id="4625" [5m])'
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
@@ -338,8 +338,8 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="windows_adds"} |= "5136" [5m])'
-              queryType: range
+              expr: 'count_over_time({job="windows_adds"} | json event_id="event_id" | event_id="5136" [5m])'
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
@@ -388,8 +388,8 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="windows_adds"} |= "5137" [5m])'
-              queryType: range
+              expr: 'count_over_time({job="windows_adds"} | json event_id="event_id" | event_id="5137" [5m])'
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
@@ -436,8 +436,8 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="windows_adds"} |= "5141" [5m])'
-              queryType: range
+              expr: 'count_over_time({job="windows_adds"} | json event_id="event_id" | event_id="5141" [5m])'
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
@@ -492,8 +492,8 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="auth"} |~ "Failed password|authentication failure" [5m])'
-              queryType: range
+              expr: 'count_over_time({job=~"auth|secure|systemd-journal"} |~ "Failed password|Failed publickey|Invalid user|authentication failure" [5m])'
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
@@ -543,8 +543,8 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="auth"} |~ "sudo.*COMMAND" [5m])'
-              queryType: range
+              expr: 'count_over_time({job=~"auth|secure|systemd-journal"} |= "COMMAND=" |= "USER=root" [5m])'
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
@@ -592,8 +592,8 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="auth"} |~ "useradd|adduser" [5m])'
-              queryType: range
+              expr: 'count_over_time({job=~"auth|secure|systemd-journal"} |~ "useradd|adduser|new user: name=" [5m])'
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
@@ -643,8 +643,8 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="fail2ban"} |= "Ban" [5m])'
-              queryType: range
+              expr: 'count_over_time({job="fail2ban", action="Ban"} [5m])'
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
@@ -692,8 +692,8 @@ groups:
               to: 0
             datasourceUid: loki
             model:
-              expr: 'count_over_time({job="syslog"} |~ "CRON.*CMD|crontab" [5m])'
-              queryType: range
+              expr: 'count_over_time({job=~"syslog|syslog-file|messages|systemd-journal"} |~ " CMD |crontab" [5m])'
+              queryType: instant
               refId: A
           - refId: B
             relativeTimeRange:
