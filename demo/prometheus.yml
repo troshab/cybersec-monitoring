@@ -1,0 +1,47 @@
+# Prometheus for the demo stand: production alert rules, demo scrape targets.
+# Production config: ../server/monitoring-stack/prometheus/prometheus.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - /etc/prometheus/alerts/*.yml
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+  # Stand-in for a Windows host (windows_exporter-shaped metrics from the feeder).
+  - job_name: 'windows'
+    static_configs:
+      - targets: ['windows-host:9100']
+        labels:
+          environment: 'demo'
+          os: 'windows'
+          type: 'workstation'
+          critical: 'false'
+          hostname: 'DEMO-WS01'
+  # Stand-in for a Linux host; its textfile collector serves the demo backup metrics.
+  - job_name: 'linux'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          environment: 'demo'
+          os: 'linux'
+          type: 'server'
+          critical: 'true'
+          hostname: 'DEMO-SRV01'

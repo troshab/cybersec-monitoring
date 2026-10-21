@@ -4,6 +4,35 @@
 
 Репозиторій - технічна частина програми [«Базовий профіль кібербезпеки організації»](https://bcp.troshab.dev/) (Факультет інформатики НаУКМА). Організаційні завдання й картки-інструкції, на які посилаються запити posture-шару (`AC-07`, `BK-02` тощо), - у [базі знань](https://bcp.troshab.dev/docs/); уроки IT-маршруту, що пояснюють цей репозиторій, - у [курсі](https://bcp.troshab.dev/docs/course/).
 
+## Спробувати за кілька хвилин: демо-стенд
+
+Щоб побачити все в роботі без серверів і робочих станцій, запустіть демо-стенд на своєму комп'ютері з Docker:
+
+```bash
+git clone https://github.com/troshab/cybersec-monitoring.git
+cd cybersec-monitoring/demo
+./up.sh
+```
+
+Стенд використовує ті самі образи, дашборди й правила сповіщень, що й робоче розгортання, а журнали Windows і Linux генерує в точному форматі агентів Alloy, з регулярними «хвилями атак». Покроковий огляд з посиланнями на уроки й картки - у [demo/README.md](demo/README.md).
+
+## Як репозиторій пов'язаний з програмою
+
+Кожна тека закриває конкретні завдання базового профілю. Уроки пояснюють, як це розгорнути, картки - навіщо і як перевірити результат.
+
+| Тека | Що там | Уроки | Картки |
+|---|---|---|---|
+| `demo/` | демо-стенд: усе ядро моніторингу із синтетичними даними на вашому комп'ютері | [IT 2.5](https://bcp.troshab.dev/docs/course/it/2-05), [IT 2.16](https://bcp.troshab.dev/docs/course/it/2-16) | [LOG-02](https://bcp.troshab.dev/docs/baseline/module/log-02) |
+| `server/monitoring-stack/` | сервер моніторингу: Prometheus, Loki, Grafana, Alertmanager, дашборди й правила сповіщень | [IT 2.1](https://bcp.troshab.dev/docs/course/it/2-01), [IT 2.2](https://bcp.troshab.dev/docs/course/it/2-02), [IT 2.3](https://bcp.troshab.dev/docs/course/it/2-03), [IT 2.4](https://bcp.troshab.dev/docs/course/it/2-04), [IT 2.5](https://bcp.troshab.dev/docs/course/it/2-05), [IT 2.15](https://bcp.troshab.dev/docs/course/it/2-15) | [LOG-01](https://bcp.troshab.dev/docs/baseline/module/log-01), [LOG-02](https://bcp.troshab.dev/docs/baseline/module/log-02), [LOG-03](https://bcp.troshab.dev/docs/baseline/module/log-03) |
+| `server/inventory-stack/` | інвентаризація: Netdisco для мережі, Fleet для пристроїв | [IT 1.2](https://bcp.troshab.dev/docs/course/it/1-02), [IT 1.4](https://bcp.troshab.dev/docs/course/it/1-04) | [AS-01](https://bcp.troshab.dev/docs/baseline/module/as-01), [AS-02](https://bcp.troshab.dev/docs/baseline/module/as-02), [AS-03](https://bcp.troshab.dev/docs/baseline/module/as-03) |
+| `windows-common/`, `windows-11-client/`, `windows-server-2025/` | аудит, Sysmon, Alloy, посилення налаштувань Windows | [IT 2.6](https://bcp.troshab.dev/docs/course/it/2-06), [IT 2.7](https://bcp.troshab.dev/docs/course/it/2-07), [IT 2.8](https://bcp.troshab.dev/docs/course/it/2-08), [IT 2.9](https://bcp.troshab.dev/docs/course/it/2-09), [IT 2.14](https://bcp.troshab.dev/docs/course/it/2-14) | [LOG-02](https://bcp.troshab.dev/docs/baseline/module/log-02), [CF-01](https://bcp.troshab.dev/docs/baseline/module/cf-01), [CF-05](https://bcp.troshab.dev/docs/baseline/module/cf-05) |
+| `linux-agent/` | агенти й посилення налаштувань Linux | [IT 2.10](https://bcp.troshab.dev/docs/course/it/2-10) | [LOG-02](https://bcp.troshab.dev/docs/baseline/module/log-02), [CF-04](https://bcp.troshab.dev/docs/baseline/module/cf-04) |
+| `posture/osquery/` | перевірки базової лінії на пристроях (пакет запитів Fleet) | [IT 2.19](https://bcp.troshab.dev/docs/course/it/2-19) | [AS-03](https://bcp.troshab.dev/docs/baseline/module/as-03), [CF-05](https://bcp.troshab.dev/docs/baseline/module/cf-05), [MW-01](https://bcp.troshab.dev/docs/baseline/module/mw-01) |
+| `posture/backup/` | резервні копії restic, перевірка відновлення, метрики віку копій | [IT 3.3](https://bcp.troshab.dev/docs/course/it/3-03), [IT 2.19](https://bcp.troshab.dev/docs/course/it/2-19) | [BK-01](https://bcp.troshab.dev/docs/baseline/module/bk-01), [BK-02](https://bcp.troshab.dev/docs/baseline/module/bk-02), [BK-03](https://bcp.troshab.dev/docs/baseline/module/bk-03) |
+| `incident-response/` | збір артефактів під час інциденту: KAPE (Windows), UAC (Linux) | [IT 3.1](https://bcp.troshab.dev/docs/course/it/3-01), [IT 3.2](https://bcp.troshab.dev/docs/course/it/3-02) | [IR-03](https://bcp.troshab.dev/docs/baseline/module/ir-03) |
+| `testing/detection-testing/` | тести, що перевіряють ланцюжок від події до сповіщення | [IT 2.18](https://bcp.troshab.dev/docs/course/it/2-18) | [LOG-02](https://bcp.troshab.dev/docs/baseline/module/log-02) |
+| `testing/query-check/` | перевірка, що запити дашбордів і правил збігаються з форматом реальних журналів | [IT 2.18](https://bcp.troshab.dev/docs/course/it/2-18) | [LOG-02](https://bcp.troshab.dev/docs/baseline/module/log-02) |
+
 ## Філософія
 
 > **Логи та моніторинг, за якими ніхто не стежить, гірші за їх відсутність.**
@@ -189,6 +218,7 @@ cybersec-monitoring/
 ├── .env.example              # шаблон конфігурації; .env створює server/gen-env.sh (не в git)
 ├── README.md, SECURITY.md, LICENSE
 ├── docs/lab.md               # опис навчального стенду
+├── demo/                     # демо-стенд: docker compose, генератор журналів, up.sh/down.sh
 │
 ├── server/                   # серверна частина
 │   ├── 01-install.sh         # головний скрипт встановлення
@@ -210,10 +240,12 @@ cybersec-monitoring/
 │
 ├── incident-response/        # збір артефактів: KAPE (Windows), UAC (Linux)
 │
-└── testing/detection-testing/
-    ├── windows/              # 8 тестів PowerShell + Run-AllTests.ps1
-    ├── linux/                # 4 тести Bash + run-all-tests.sh
-    └── kali/                 # 6 сценаріїв Bash + run-all-tests.sh (лише ізольований стенд)
+└── testing/
+    ├── detection-testing/
+    │   ├── windows/          # 8 тестів PowerShell + Run-AllTests.ps1
+    │   ├── linux/            # 4 тести Bash + run-all-tests.sh
+    │   └── kali/             # 6 сценаріїв Bash + run-all-tests.sh (лише ізольований стенд)
+    └── query-check/          # перевірка запитів дашбордів і правил на зразках журналів
 ```
 
 ## Posture-шар (CIS IG1)
@@ -304,6 +336,10 @@ cd testing/detection-testing/kali
 ```
 
 Запускайте сценарії атак лише у власній лабораторній мережі з письмовим дозволом власника інфраструктури.
+
+### Перевірка запитів
+
+`testing/query-check/` перевіряє, що кожен LogQL-запит дашбордів і правил Grafana знаходить дані у форматі, який реально надсилають агенти Alloy. Запускайте після будь-якої зміни дашбордів, правил або конфігурацій Alloy; інструкція - у [testing/query-check/README.md](testing/query-check/README.md).
 
 ## Безпека
 

@@ -1,0 +1,161 @@
+# =============================================================================
+# Demo stand: the monitoring core of server/monitoring-stack, started alone.
+# =============================================================================
+# Same images and the same configs, dashboards and alert rules as production:
+# every file is bind-mounted from ../server/monitoring-stack, nothing is copied.
+# Logs come from demo/feeder/feeder.py, not from real agents.
+#
+# Prometheus uses demo/prometheus.yml: the production rule files, but demo
+# scrape targets (one node_exporter container stands in for a Linux host and
+# carries the demo backup metrics). Not started: snmp-exporter, Fleet, Netdisco
+# and real Windows/Linux agents.
+#
+# All ports bind to 127.0.0.1. up.sh writes a random Grafana admin password to
+# demo/.env; anonymous visitors get read-only Viewer access. Do not expose this
+# stack beyond your own machine.
+# =============================================================================
+
+name: csm-demo
+
+services:
+  # ===========================================================================
+  # Prometheus - metrics and alert rules (same v3.15.0 as production)
+  # ===========================================================================
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    restart: unless-stopped
+    user: "65534:65534"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-30d}'
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../server/monitoring-stack/prometheus/alerts:/etc/prometheus/alerts:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      - alertmanager
+
+  # ===========================================================================
+  # Loki - log storage (same 3.7.8 and config as production)
+  # ===========================================================================
+  loki:
+    image: grafana/loki:3.7.8
+    restart: unless-stopped
+    user: "10001:10001"
+    command: -config.file=/etc/loki/config.yml
+    ports:
+      - "127.0.0.1:${LOKI_PORT:-3100}:3100"
+    volumes:
+      - ../server/monitoring-stack/loki/loki.yml:/etc/loki/config.yml:ro
+      - loki-data:/loki
+
+  # ===========================================================================
+  # Grafana - dashboards, datasources and unified alerting (same 13.2.3)
+  # ===========================================================================
+  grafana:
+    image: grafana/grafana:13.2.3
+    restart: unless-stopped
+    user: "472:472"
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-demo-admin-password}
+      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET_KEY:-demo-secret-key-not-for-production}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_SERVER_ROOT_URL=http://127.0.0.1:${GRAFANA_PORT:-3000}
+    volumes:
+      - ../server/monitoring-stack/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ../server/monitoring-stack/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../server/monitoring-stack/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+
+  # ===========================================================================
+  # Alertmanager - alert routing (same v0.34.1 and config as production)
+  # ===========================================================================
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://127.0.0.1:${ALERTMANAGER_PORT:-9093}'
+    ports:
+      - "127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093"
+    volumes:
+      - ../server/monitoring-stack/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    depends_on:
+      - mailpit
+
+  # ===========================================================================
+  # Mailpit - local SMTP sink; every alert e-mail is visible in the web UI
+  # ===========================================================================
+  mailpit:
+    image: axllent/mailpit:v1.31.5
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_WEB_PORT:-8025}:8025"
+    environment:
+      - MP_SMTP_AUTH_ACCEPT_ANY=true
+      - MP_SMTP_AUTH_ALLOW_INSECURE=true
+
+  # ===========================================================================
+  # Demo data: a Linux host stand-in and the synthetic log feeder
+  # ===========================================================================
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    restart: unless-stopped
+    command:
+      - '--collector.textfile.directory=/textfile'
+    volumes:
+      - posture-textfile:/textfile:ro
+
+  # Stand-in for a Windows host: only the textfile collector, serving
+  # windows_exporter-shaped metrics that the feeder writes.
+  windows-host:
+    image: prom/node-exporter:v1.12.1
+    restart: unless-stopped
+    command:
+      - '--collector.disable-defaults'
+      - '--collector.textfile'
+      - '--collector.textfile.directory=/textfile'
+    volumes:
+      - windows-textfile:/textfile:ro
+
+  feeder:
+    image: python:3.13.13-slim
+    restart: on-failure   # retries until Loki accepts pushes
+    working_dir: /repo
+    command:
+      - python
+      - demo/feeder/feeder.py
+      - --repo=/repo
+      - --loki=http://loki:3100
+      - --follow=30
+      - --wave-minutes=${DEMO_WAVE_MINUTES:-15}
+      - --prom-dir=/textfile
+      - --win-prom-dir=/windows-textfile
+    volumes:
+      - ..:/repo:ro
+      - posture-textfile:/textfile
+      - windows-textfile:/windows-textfile
+    depends_on:
+      - loki
+
+volumes:
+  posture-textfile:
+  windows-textfile:
+  prometheus-data:
+  loki-data:
+  grafana-data:
+  alertmanager-data:
