@@ -147,7 +147,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "count(up{job=~\"windows|linux\"} == 0)",
+          "expr": "count(up{job=~\"windows|linux\"} == 0) or vector(0)",
           "refId": "A"
         }
       ],

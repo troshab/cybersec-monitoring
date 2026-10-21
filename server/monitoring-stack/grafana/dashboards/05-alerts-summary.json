@@ -48,7 +48,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "count(ALERTS{alertstate=\"firing\", severity=\"critical\"})",
+          "expr": "count(ALERTS{alertstate=\"firing\", severity=\"critical\"}) or vector(0)",
           "refId": "A"
         }
       ],
@@ -84,7 +84,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "count(ALERTS{alertstate=\"firing\", severity=\"warning\"})",
+          "expr": "count(ALERTS{alertstate=\"firing\", severity=\"warning\"}) or vector(0)",
           "refId": "A"
         }
       ],
@@ -120,7 +120,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "count(ALERTS{alertstate=\"pending\"})",
+          "expr": "count(ALERTS{alertstate=\"pending\"}) or vector(0)",
           "refId": "A"
         }
       ],
@@ -153,7 +153,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "count(ALERTS{alertstate=\"firing\"})",
+          "expr": "count(ALERTS{alertstate=\"firing\"}) or vector(0)",
           "refId": "A"
         }
       ],
@@ -189,7 +189,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "count(up{job=~\"windows|linux\"} == 0)",
+          "expr": "count(up{job=~\"windows|linux\"} == 0) or vector(0)",
           "refId": "A"
         }
       ],

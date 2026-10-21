@@ -146,13 +146,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | destination_port=~\"4444|5555|6666|1337|31337\" | drop event_data [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | destination_port=~\"4444|5555|6666|1337|31337\" | drop event_data [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -183,13 +184,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_firewall\"} | json event_id=\"event_id\" | event_id=~\"2003|2004|2005|2006\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_firewall\"} | json event_id=\"event_id\" | event_id=~\"2003|2004|2005|2006\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -220,13 +222,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\" | event_id=\"22\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\" | event_id=\"22\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -489,13 +492,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | destination_port=~\"445\" | drop event_data [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | destination_port=~\"445\" | drop event_data [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -526,13 +530,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | destination_port=~\"3389\" | drop event_data [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | destination_port=~\"3389\" | drop event_data [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -563,13 +568,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | destination_port=~\"5985|5986\" | drop event_data [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_sysmon\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"3\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]DestinationPort['\"]>(?P<destination_port>[^<]*)<` | destination_port=~\"5985|5986\" | drop event_data [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -599,13 +605,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_object_access\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"5140\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]ShareName['\"]>(?P<share_name>[^<]*)<` | share_name=~`.*(C\\$|ADMIN\\$|IPC\\$)` | drop event_data [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_object_access\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"5140\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]ShareName['\"]>(?P<share_name>[^<]*)<` | share_name=~`.*(C\\$|ADMIN\\$|IPC\\$)` | drop event_data [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],

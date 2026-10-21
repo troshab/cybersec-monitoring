@@ -46,14 +46,15 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "pluginVersion": "10.0.0",
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=~\"windows_.*\"} [$__range])",
+          "expr": "sum(count_over_time({job=~\"windows_.*\"} [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -84,13 +85,14 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=~\"windows_.*\"} | json event_id=\"event_id\" | event_id=~\"1102|4732|7045|4698\" [$__range])",
+          "expr": "sum(count_over_time({job=~\"windows_.*\"} | json event_id=\"event_id\" | event_id=~\"1102|4732|7045|4698\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -121,13 +123,14 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_accounts\"} | json event_id=\"event_id\" | event_id=\"4732\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_accounts\"} | json event_id=\"event_id\" | event_id=\"4732\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -159,13 +162,14 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_services\"} | json event_id=\"event_id\" | event_id=\"7045\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_services\"} | json event_id=\"event_id\" | event_id=\"7045\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -197,13 +201,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -235,13 +240,14 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_persistence\"} | json event_id=\"event_id\" | event_id=\"4698\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_persistence\"} | json event_id=\"event_id\" | event_id=\"4698\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -272,13 +278,14 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_policy\"} | json event_id=\"event_id\" | event_id=\"1102\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_policy\"} | json event_id=\"event_id\" | event_id=\"1102\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -310,13 +317,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_powershell\"} |~ \"(?i)encodedcommand|downloadstring|invoke-expression|bypass\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_powershell\"} |~ \"(?i)encodedcommand|downloadstring|invoke-expression|bypass\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -450,12 +458,19 @@
       "options": {
         "cellHeight": "sm",
         "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false},
-        "showHeader": true
+        "showHeader": true,
+        "sortBy": [{"displayName": "Подій", "desc": true}]
       },
+      "transformations": [
+        {"id": "merge", "options": {}},
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"job": "Джерело (job)", "Value #A": "Подій"}}}
+      ],
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
           "expr": "topk(10, sum by (job) (count_over_time({job=~\"windows_.*\"} [$__range])))",
+          "queryType": "instant",
+          "legendFormat": "{{job}}",
           "refId": "A"
         }
       ],

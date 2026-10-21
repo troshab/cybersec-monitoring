@@ -43,13 +43,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=~\"auth|secure|systemd-journal\"} |~ `(?i)failed password|failed publickey|invalid user|authentication failure` [$__range])",
+          "expr": "sum(count_over_time({job=~\"auth|secure|systemd-journal\"} |~ `(?i)failed password|failed publickey|invalid user|authentication failure` [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -80,13 +81,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=~\"auth|secure|systemd-journal\"} |= \"COMMAND=\" [$__range])",
+          "expr": "sum(count_over_time({job=~\"auth|secure|systemd-journal\"} |= \"COMMAND=\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -117,13 +119,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"audit\"} |~ \"USER_CMD|EXECVE\" [$__range])",
+          "expr": "sum(count_over_time({job=\"audit\"} |~ \"USER_CMD|EXECVE\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -153,13 +156,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"audit\"} |~ \"ADD_USER|DEL_USER|USER_MGMT\" [$__range])",
+          "expr": "sum(count_over_time({job=\"audit\"} |~ \"ADD_USER|DEL_USER|USER_MGMT\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -189,13 +193,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"fail2ban\", action=\"Ban\"} [$__range])",
+          "expr": "sum(count_over_time({job=\"fail2ban\", action=\"Ban\"} [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -226,13 +231,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=~\"kern|kernel|systemd-journal\"} |~ \"(?i)segfault|oom|panic|error\" [$__range])",
+          "expr": "sum(count_over_time({job=~\"kern|kernel|systemd-journal\"} |~ \"(?i)segfault|oom|panic|error\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -458,12 +464,15 @@
         {
           "datasource": {"type": "loki", "uid": "loki"},
           "expr": "topk(10, sum by (source_ip) (count_over_time({job=~\"auth|secure|systemd-journal\"} |~ `(?i)failed password|failed publickey|invalid user|authentication failure` | regexp `(?:from |rhost=)(?P<source_ip>[0-9a-fA-F:.]+)` | source_ip!=\"\" [$__range])))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
       "title": "Top Source IPs (Failed Auth)",
       "transformations": [
-        {"id": "sortBy", "options": {"fields": {}, "sort": [{"desc": true, "field": "Value"}]}}
+        {"id": "merge", "options": {}},
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"source_ip": "IP-адреса", "Value #A": "Кількість"}}},
+        {"id": "sortBy", "options": {"fields": {}, "sort": [{"desc": true, "field": "Кількість"}]}}
       ],
       "type": "table"
     },

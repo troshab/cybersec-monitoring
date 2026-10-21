@@ -52,7 +52,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -62,7 +62,8 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -97,7 +98,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -106,7 +107,8 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_accounts\"} | json event_id=\"event_id\" | event_id=~\"4720|4728|4732\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_accounts\"} | json event_id=\"event_id\" | event_id=~\"4720|4728|4732\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -140,7 +142,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -149,7 +151,8 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_policy\"} | json event_id=\"event_id\" | event_id=\"1102\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_policy\"} | json event_id=\"event_id\" | event_id=\"1102\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -184,7 +187,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -193,7 +196,8 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_services\"} | json event_id=\"event_id\" | event_id=\"7045\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_services\"} | json event_id=\"event_id\" | event_id=\"7045\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -228,7 +232,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -237,7 +241,8 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_powershell\"} [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_powershell\"} [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -271,7 +276,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -280,7 +285,8 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_defender\"} | json event_id=\"event_id\" | event_id=~\"1116|1117\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_defender\"} | json event_id=\"event_id\" | event_id=~\"1116|1117\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -586,15 +592,15 @@
         {
           "datasource": {"type": "loki", "uid": "loki"},
           "expr": "topk(10, sum by (host) (count_over_time({job=~\"windows_.*\"} [$__range])))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
       "title": "Top 10 Hosts by Event Volume",
       "transformations": [
-        {
-          "id": "sortBy",
-          "options": {"fields": {}, "sort": [{"desc": true, "field": "Value"}]}
-        }
+        {"id": "merge", "options": {}},
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"host": "Хост", "Value #A": "Кількість"}}},
+        {"id": "sortBy", "options": {"fields": {}, "sort": [{"desc": true, "field": "Кількість"}]}}
       ],
       "type": "table"
     }

@@ -64,7 +64,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "count(ALERTS{alertstate=\"firing\", severity=\"critical\"})",
+          "expr": "count(ALERTS{alertstate=\"firing\", severity=\"critical\"}) or vector(0)",
           "refId": "A"
         }
       ],
@@ -147,7 +147,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "count(up == 0)",
+          "expr": "count(up == 0) or vector(0)",
           "refId": "A"
         }
       ],
@@ -179,7 +179,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -189,7 +189,8 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({job=\"windows_accounts\"} | json event_id=\"event_id\" | event_id=~\"4732|4720\" [24h])",
+          "expr": "sum(count_over_time({job=\"windows_accounts\"} | json event_id=\"event_id\" | event_id=~\"4732|4720\" [24h]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -221,7 +222,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -231,7 +232,8 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({job=\"windows_policy\"} | json event_id=\"event_id\" | event_id=\"1102\" [24h])",
+          "expr": "sum(count_over_time({job=\"windows_policy\"} | json event_id=\"event_id\" | event_id=\"1102\" [24h]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -264,7 +266,7 @@
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["sum"],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -274,7 +276,8 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({job=\"windows_services\"} | json event_id=\"event_id\" | event_id=\"7045\" [24h])",
+          "expr": "sum(count_over_time({job=\"windows_services\"} | json event_id=\"event_id\" | event_id=\"7045\" [24h]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],

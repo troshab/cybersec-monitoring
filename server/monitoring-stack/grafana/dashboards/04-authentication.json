@@ -43,13 +43,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
           "expr": "sum(count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4625\" [$__range]) or count_over_time({job=~\"auth|secure|systemd-journal\"} |~ `(?i)failed password|failed publickey|invalid user|authentication failure` [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -76,13 +77,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4624\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4624\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -113,13 +115,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4672\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4672\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -149,13 +152,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4740\" [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\" | event_id=\"4740\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -186,13 +190,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=\"windows_rdp\"} [$__range])",
+          "expr": "sum(count_over_time({job=\"windows_rdp\"} [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -223,13 +228,14 @@
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "loki"},
-          "expr": "count_over_time({job=~\"auth|secure|systemd-journal\"} |~ \"Accepted (password|publickey|keyboard-interactive)\" [$__range])",
+          "expr": "sum(count_over_time({job=~\"auth|secure|systemd-journal\"} |~ \"Accepted (password|publickey|keyboard-interactive)\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
@@ -305,7 +311,7 @@
       "options": {
         "legend": {"displayMode": "list", "placement": "right", "showLegend": true},
         "pieType": "pie",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "tooltip": {"mode": "single", "sort": "none"}
       },
       "targets": [
@@ -336,7 +342,7 @@
       "options": {
         "legend": {"displayMode": "list", "placement": "right", "showLegend": true},
         "pieType": "pie",
-        "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
         "tooltip": {"mode": "single", "sort": "none"}
       },
       "targets": [
@@ -468,12 +474,15 @@
         {
           "datasource": {"type": "loki", "uid": "loki"},
           "expr": "topk(10, sum by (user) (count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"4625\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]TargetUserName['\"]>(?P<user>[^<]*)<` | user!=\"\" | drop event_data [$__range]) or count_over_time({job=~\"auth|secure|systemd-journal\"} |~ `(?i)failed password|failed publickey|invalid user|authentication failure` | regexp `(?:Failed (?:password|publickey) for (?:invalid user )?|Invalid user |(?:^|\\s)user=)(?P<user>\\S+)` | user!=\"\" | drop event_data [$__range])))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
       "title": "Top Failed Users",
       "transformations": [
-        {"id": "sortBy", "options": {"fields": {}, "sort": [{"desc": true, "field": "Value"}]}}
+        {"id": "merge", "options": {}},
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"user": "Користувач", "Value #A": "Кількість"}}},
+        {"id": "sortBy", "options": {"fields": {}, "sort": [{"desc": true, "field": "Кількість"}]}}
       ],
       "type": "table"
     },
@@ -499,12 +508,15 @@
         {
           "datasource": {"type": "loki", "uid": "loki"},
           "expr": "topk(10, sum by (source_ip) (count_over_time({job=\"windows_auth\"} | json event_id=\"event_id\", event_data=\"event_data\" | event_id=\"4625\" | line_format \"{{.event_data}}\" | regexp `Name=['\"]IpAddress['\"]>(?P<source_ip>[^<]*)<` | source_ip!=\"\" | drop event_data [$__range]) or count_over_time({job=~\"auth|secure|systemd-journal\"} |~ `(?i)failed password|failed publickey|invalid user|authentication failure` | regexp `(?:from |rhost=)(?P<source_ip>[0-9a-fA-F:.]+)` | source_ip!=\"\" | drop event_data [$__range])))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
       "title": "Top Source IPs (Failed)",
       "transformations": [
-        {"id": "sortBy", "options": {"fields": {}, "sort": [{"desc": true, "field": "Value"}]}}
+        {"id": "merge", "options": {}},
+        {"id": "organize", "options": {"excludeByName": {"Time": true}, "renameByName": {"source_ip": "IP-адреса", "Value #A": "Кількість"}}},
+        {"id": "sortBy", "options": {"fields": {}, "sort": [{"desc": true, "field": "Кількість"}]}}
       ],
       "type": "table"
     }
